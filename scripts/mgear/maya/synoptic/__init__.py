@@ -85,6 +85,14 @@ class Synoptic(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         self.create_widgets()
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
+    def showEvent(self, event):
+        # type: (QtGui.QShowEvent) -> None
+        event.accept()
+
+    def hideEvent(self, event):
+        # type: (QtGui.QHideEvent) -> None
+        event.accept()
+
     def create_widgets(self):
         self.setupUi()
 
