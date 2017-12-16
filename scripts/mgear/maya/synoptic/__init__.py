@@ -1,47 +1,16 @@
-# MGEAR is under the terms of the MIT License
-
-# Copyright (c) 2016 Jeremie Passerin, Miquel Campos
-
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-
-# Author:     Jeremie Passerin      geerem@hotmail.com  www.jeremiepasserin.com
-# Author:     Miquel Campos         hello@miquel-campos.com  www.miquel-campos.com
-# Date:       2016 / 10 / 10
-
-##################################################
-# GLOBAL
-##################################################
 import os
 
-# import maya.OpenMayaUI as mui
 import pymel.core as pm
 
 from maya.app.general.mayaMixin import MayaQDockWidget
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
-import mgear.maya.pyqt as gqt
+
+import mgear
+from mgear.maya import pyqt
+from mgear.vendor.Qt import QtGui, QtCore, QtWidgets
 import mgear.maya.utils
 
 
-QtGui, QtCore, QtWidgets, wrapInstance = gqt.qt_import()
-
-
-# TAB_PATH = os.path.join(os.path.dirname(__file__), "tabs")
 SYNOPTIC_WIDGET_NAME = "synoptic_view"
 SYNOPTIC_ENV_KEY = "MGEAR_SYNOPTIC_PATH"
 
@@ -54,17 +23,26 @@ SYNOPTIC_DIRECTORIES = mgear.maya.utils.gatherCustomModuleDirectories(
 # OPEN
 ##################################################
 def open(*args):
-
-    gqt.showDialog(Synoptic)
+    # open the synoptic dialog, without clean old instances
+    pyqt.showDialog(Synoptic, False)
 
 
 def importTab(tabName):
+    """Import Synoptic Tab
+
+    Args:
+        tabName (Str): Synoptic tab name
+
+    Returns:
+        module: Synoptic tab module
+    """
     import mgear.maya.synoptic as syn
     dirs = syn.SYNOPTIC_DIRECTORIES
     defFmt = "mgear.maya.synoptic.tabs.{}"
-    customFmt = "{0}.{1}"
+    customFmt = "{0}"
 
-    module = mgear.maya.utils.importFromStandardOrCustomDirectories(dirs, defFmt, customFmt, tabName)
+    module = mgear.maya.utils.importFromStandardOrCustomDirectories(
+        dirs, defFmt, customFmt, tabName)
     return module
 
 
@@ -72,6 +50,11 @@ def importTab(tabName):
 # SYNOPTIC
 ##################################################
 class Synoptic(MayaQWidgetDockableMixin, QtWidgets.QDialog):
+    """Synoptic Main class"""
+
+    default_height = 790
+    default_width = 325
+    margin = 15 * 2
 
     default_height = 790
     default_width = 325
@@ -80,7 +63,7 @@ class Synoptic(MayaQWidgetDockableMixin, QtWidgets.QDialog):
     def __init__(self, parent=None):
         self.toolName = SYNOPTIC_WIDGET_NAME
         # Delete old instances of the componet settings window.
-        gqt.deleteInstances(self, MayaQDockWidget)
+        pyqt.deleteInstances(self, MayaQDockWidget)
         super(Synoptic, self).__init__(parent)
         self.create_widgets()
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
@@ -106,9 +89,10 @@ class Synoptic(MayaQWidgetDockableMixin, QtWidgets.QDialog):
     def setupUi(self):
         # Widgets
         self.setObjectName(SYNOPTIC_WIDGET_NAME)
-        # self.resize(560, 775)
+        self.resize(560, 775)
 
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(1)
         sizePolicy.setVerticalStretch(1)
         sizePolicy.setHeightForWidth(self.sizePolicy().hasHeightForWidth())
@@ -121,10 +105,14 @@ class Synoptic(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
         self.mainContainer = QtWidgets.QGroupBox(self)
 
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+
         sizePolicy.setHorizontalStretch(1)
         sizePolicy.setVerticalStretch(1)
-        sizePolicy.setHeightForWidth(self.mainContainer.sizePolicy().hasHeightForWidth())
+
+        sizePolicy.setHeightForWidth(
+            self.mainContainer.sizePolicy().hasHeightForWidth())
 
         self.mainContainer.setSizePolicy(sizePolicy)
         self.mainContainer.setMinimumSize(QtCore.QSize(0, 0))
@@ -156,14 +144,20 @@ class Synoptic(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         self.gridLayout.setObjectName("gridLayout")
         self.scrollArea = QtWidgets.QScrollArea(self.mainContainer)
 
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+
         sizePolicy.setHorizontalStretch(1)
         sizePolicy.setVerticalStretch(1)
-        sizePolicy.setHeightForWidth(self.scrollArea.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.scrollArea.sizePolicy().hasHeightForWidth())
 
         self.scrollArea.setSizePolicy(sizePolicy)
         self.scrollArea.setFrameShape(QtWidgets.QFrame.NoFrame)
-        self.scrollArea.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+
+        self.scrollArea.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarAsNeeded)
+
         self.scrollArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setAlignment(QtCore.Qt.AlignCenter)
@@ -173,10 +167,12 @@ class Synoptic(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         self.tabs.setSizePolicy(sizePolicy)
         self.tabs.setObjectName("tabs")
 
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         sizePolicy.setHorizontalStretch(1)
         sizePolicy.setVerticalStretch(1)
-        sizePolicy.setHeightForWidth(self.tabs.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.tabs.sizePolicy().hasHeightForWidth())
 
         self.tabs.setSizePolicy(sizePolicy)
         self.tabs.setObjectName("synoptic_tab")
@@ -188,13 +184,16 @@ class Synoptic(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
     # Singal Methods =============================
     def updateModelList(self):
-        # avoiding unnecessory firing currentIndexChanged event before finish to model_list
+        # avoiding unnecessary firing currentIndexChanged event before
+        # finish to model_list
         try:
             self.model_list.currentIndexChanged.disconnect()
         except RuntimeError:
             pass
 
-        rig_models = [item for item in pm.ls(transforms=True) if item.hasAttr("is_rig")]
+        rig_models = [item for item in pm.ls(transforms=True)
+                      if item.hasAttr("is_rig")]
+
         self.model_list.clear()
         for item in rig_models:
             self.model_list.addItem(item.name(), item.name())
@@ -208,7 +207,14 @@ class Synoptic(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         for i in range(self.tabs.count()):
             self.tabs.widget(i).close()
         self.tabs.clear()
-        # defPath = os.environ.get("MGEAR_SYNOPTIC_PATH", None)
+
+        # safety clean of  synoticTab script jobs
+        # this is neded when we switch models witout close synopticwindow.
+        oldJobs = pm.scriptJob(listJobs=True)
+        for oldjob in oldJobs:
+            if "SynopticTab" in str(oldjob):
+                id = oldjob.split(" ")[0][:-1]
+                pm.scriptJob(kill=int(id), force=True)
 
         currentModelName = self.model_list.currentText()
         currentModels = pm.ls(currentModelName)
@@ -243,13 +249,18 @@ class Synoptic(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                     self.tabs.insertTab(i, tab, tab_name)
 
                 else:
-                    mes = "No synoptic tabs for %s" % self.model_list.currentText()
+                    mes = "No synoptic tabs for %s" % \
+                          self.model_list.currentText()
+
                     pm.displayWarning(mes)
 
             except Exception as e:
                 import traceback
                 traceback.print_exc()
-                mes = "Synoptic tab: %s Loading fail {0}\n{1}".format(tab_name, e)
+
+                mes = "Synoptic tab: %s Loading fail {0}\n{1}".format(
+                    tab_name, e)
+
                 pm.displayError(mes)
 
         max_h = self.default_height if max_h == 0 else max_h
@@ -271,10 +282,16 @@ class Synoptic(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         horizontalLayout.setContentsMargins(0, 0, 0, 0)
         horizontalLayout.setObjectName("horizontalLayout")
 
-        spacer_left = QtWidgets.QSpacerItem(0, 0, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
-        spacer_right = QtWidgets.QSpacerItem(0, 0, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
-        # spacer_left.setObjectName("spacer_left")  # QSpacerItem has not this props...
-        # spacer_right.setObjectName("spacer_right")
+        spacer_left = QtWidgets.QSpacerItem(0,
+                                            0,
+                                            QtWidgets.QSizePolicy.Expanding,
+                                            QtWidgets.QSizePolicy.Minimum)
+
+        spacer_right = QtWidgets.QSpacerItem(0,
+                                             0,
+                                             QtWidgets.QSizePolicy.Expanding,
+                                             QtWidgets.QSizePolicy.Minimum)
+
         wrapperWidget.setSpacerLeft(spacer_left)
 
         horizontalLayout.addItem(spacer_left)
@@ -289,8 +306,10 @@ class Synoptic(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
 
 class SynopticTabWrapper(QtWidgets.QWidget):
-    """
-    class for handling mouse rubberband within spacer and synoptic tab that is children of.
+    """Class for handling mouse rubberband Selection
+
+    Class for handling mouse rubberband within spacer and synoptic tab that
+    is children of.
     """
 
     def __init__(self, *args, **kwargs):
@@ -299,7 +318,10 @@ class SynopticTabWrapper(QtWidgets.QWidget):
         super(SynopticTabWrapper, self).__init__(*args, **kwargs)
 
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.rubberband = QtWidgets.QRubberBand(QtWidgets.QRubberBand.Rectangle, self)
+
+        self.rubberband = QtWidgets.QRubberBand(
+            QtWidgets.QRubberBand.Rectangle, self)
+
         self.offset = QtCore.QPoint()
         self.syn_widget = None
         self.syn_widget_is_mainsynoptictab = None
