@@ -178,7 +178,8 @@ class componentSettings(MayaQWidgetDockableMixin, componentMainSettings):
 
         self.settingsTab.ro_comboBox.setCurrentIndex(self.root.attr("default_rotorder").get())
 
-        ikRefArrayItems = self.root.attr("ikrefarray").get().split(",")
+        ikRefArray = self.root.attr("ikrefarray").get() or ""
+        ikRefArrayItems = ikRefArray.split(",")
         for item in ikRefArrayItems:
             self.settingsTab.ikRefArray_listWidget.addItem(item)
 

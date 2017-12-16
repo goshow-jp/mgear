@@ -74,10 +74,10 @@ def create(parent=None, name="icon", m=dt.Matrix(), color=[0,0,0], icon="cube", 
     elif icon == "square": ctl = square(parent, name, kwargs["w"], kwargs["d"], color, m, kwargs["po"], kwargs["ro"])
     elif icon == "flower": ctl = flower(parent, name, kwargs["w"], color, m, kwargs["po"], kwargs["ro"])
     elif icon == "circle": ctl = circle(parent, name, kwargs["w"], color, m, kwargs["po"], kwargs["ro"])
-    elif icon == "cylinder": ctl = cylinder(parent, name, kwargs["w"], kwargs["h"], color, m, kwargs["po"], kwargs["ro"])
+    elif icon == "cylinder": ctl = cylinder(parent, name, kwargs["w"], kwargs["h"], kwargs["d"], color, m, kwargs["po"], kwargs["ro"])
     elif icon == "compas": ctl = compas(parent, name, kwargs["w"], color, m, kwargs["po"], kwargs["ro"])
     elif icon == "diamond": ctl = diamond(parent, name, kwargs["w"], color, m, kwargs["po"], kwargs["ro"])
-    elif icon == "cubewithpeak": ctl = cubewithpeak(parent, name, kwargs["w"], color, m, kwargs["po"], kwargs["ro"])
+    elif icon == "cubewithpeak": ctl = cubewithpeak(parent, name, kwargs["w"], kwargs["h"], kwargs["d"], color, m, kwargs["po"], kwargs["ro"])
     elif icon == "sphere": ctl = sphere(parent, name, kwargs["w"], color, m, kwargs["po"], kwargs["ro"])
     elif icon == "arrow": ctl = arrow(parent, name, kwargs["w"], color, m, kwargs["po"], kwargs["ro"])
     elif icon == "crossarrow": ctl = crossarrow(parent, name, kwargs["w"], color, m, kwargs["po"], kwargs["ro"])
@@ -277,7 +277,7 @@ def circle(parent=None, name="circle", width=1, color=[0,0,0], m=dt.Matrix(), po
     return node
 
 
-def cylinder(parent=None, name="cylinder", width=1, heigth=1, color=[0,0,0], m=dt.Matrix(), pos_offset=None, rot_offset=None):
+def cylinder(parent=None, name="cylinder", width=1, height=1, depth=1, color=[0,0,0], m=dt.Matrix(), pos_offset=None, rot_offset=None):
     """
     Create a curve with a CYLINDER shape.
 
@@ -286,6 +286,7 @@ def cylinder(parent=None, name="cylinder", width=1, heigth=1, color=[0,0,0], m=d
         name (str): Name of the curve.
         width (float): Width of the shape.
         height (float): Height of the shape.
+        depth (float): Depth of the shape.
         color (int or list of float): The color in index base or RGB.
         m (matrix): The global transformation of the curve.
         pos_offset (vector): The xyz position offset of the curve from its center.
@@ -296,33 +297,34 @@ def cylinder(parent=None, name="cylinder", width=1, heigth=1, color=[0,0,0], m=d
     """
 
     dlen = width * .5
-    dhei = heigth * .5
+    dhei = height * .5
+    ddep = depth * .5
 
     # upper circle
-    v0 = dt.Vector(0, dhei, -dlen * 1.108)
-    v1 = dt.Vector(dlen * .78 , dhei, -dlen * .78)
-    v2 = dt.Vector(dlen * 1.108, dhei, 0)
-    v3 = dt.Vector(dlen * .78 , dhei, dlen * .78)
-    v4 = dt.Vector(0, dhei, dlen * 1.108)
-    v5 = dt.Vector(-dlen * .78 , dhei, dlen * .78)
+    v0 = dt.Vector(0,             dhei, -ddep * 1.108)
+    v1 = dt.Vector(dlen * .78 ,   dhei, -ddep * .78)
+    v2 = dt.Vector(dlen * 1.108,  dhei, 0)
+    v3 = dt.Vector(dlen * .78,    dhei, ddep * .78)
+    v4 = dt.Vector(0,             dhei, ddep * 1.108)
+    v5 = dt.Vector(-dlen * .78 ,  dhei, ddep * .78)
     v6 = dt.Vector(-dlen * 1.108, dhei, 0)
-    v7 = dt.Vector(-dlen * .78 , dhei, -dlen * .78)
+    v7 = dt.Vector(-dlen * .78 ,  dhei, -ddep * .78)
 
     # lower circle
-    v8 = dt.Vector(0, -dhei, -dlen * 1.108)
-    v9 = dt.Vector(dlen * .78 , -dhei, -dlen * .78)
+    v8 = dt.Vector(0, -dhei, -ddep * 1.108)
+    v9 = dt.Vector(dlen * .78 , -dhei, -ddep * .78)
     v10 = dt.Vector(dlen * 1.108, -dhei, 0)
-    v11 = dt.Vector(dlen * .78 , -dhei, dlen * .78)
-    v12 = dt.Vector(0, -dhei, dlen * 1.108)
-    v13 = dt.Vector(-dlen * .78 , -dhei, dlen * .78)
+    v11 = dt.Vector(dlen * .78 , -dhei, ddep * .78)
+    v12 = dt.Vector(0, -dhei, ddep * 1.108)
+    v13 = dt.Vector(-dlen * .78 , -dhei, ddep * .78)
     v14 = dt.Vector(-dlen * 1.108, -dhei, 0)
-    v15 = dt.Vector(-dlen * .78 , -dhei, -dlen * .78)
+    v15 = dt.Vector(-dlen * .78 , -dhei, -ddep * .78)
 
     # curves
-    v16 = dt.Vector(0, dhei, -dlen)
-    v17 = dt.Vector(0, -dhei, -dlen)
-    v18 = dt.Vector(0, -dhei, dlen)
-    v19 = dt.Vector(0, dhei, dlen)
+    v16 = dt.Vector(0, dhei, -ddep)
+    v17 = dt.Vector(0, -dhei, -ddep)
+    v18 = dt.Vector(0, -dhei, ddep)
+    v19 = dt.Vector(0, dhei, ddep)
 
     v20 = dt.Vector(dlen, dhei, 0)
     v21 = dt.Vector(dlen, -dhei, 0)
@@ -434,7 +436,7 @@ def diamond(parent=None, name="diamond", width=1, color=[0,0,0], m=dt.Matrix(), 
     return node
 
 
-def cubewithpeak(parent=None, name="cubewithpeak", width=1, color=[0,0,0], m=dt.Matrix(), pos_offset=None, rot_offset=None):
+def cubewithpeak(parent=None, name="cubewithpeak", width=1, height=1, depth=1, color=[0,0,0], m=dt.Matrix(), pos_offset=None, rot_offset=None):
     """
     Create a curve with a CUBE WITH PEAK shape.
 
@@ -442,6 +444,8 @@ def cubewithpeak(parent=None, name="cubewithpeak", width=1, color=[0,0,0], m=dt.
         parent (dagNode): The parent object of the newly created curve.
         name (str): Name of the curve.
         width (float): Width of the shape.
+        height (float): Height of the shape.
+        depth (float): Depth of the shape.
         color (int or list of float): The color in index base or RGB.
         m (matrix): The global transformation of the curve.
         pos_offset (vector): The xyz position offset of the curve from its center.
@@ -451,17 +455,20 @@ def cubewithpeak(parent=None, name="cubewithpeak", width=1, color=[0,0,0], m=dt.
         dagNode: The newly created icon.
     """
 
-    dlen = width * 0.5
+    dw = width * 0.5
+    dh = height * 0.5
+    dd = depth * 0.5
 
-    peak = dt.Vector(0,width,0)
-    ppp = dt.Vector(dlen,dlen,dlen)
-    ppN = dt.Vector(dlen,dlen,dlen*-1)
-    pNp = dt.Vector(dlen,0,dlen)
-    Npp = dt.Vector(dlen*-1,dlen,dlen)
-    pNN = dt.Vector(dlen,0,dlen*-1)
-    NNp = dt.Vector(dlen*-1,0,dlen)
-    NpN = dt.Vector(dlen*-1,dlen,dlen*-1)
-    NNN = dt.Vector(dlen*-1,0,dlen*-1)
+    peak = dt.Vector(0, height, 0)
+
+    ppp = dt.Vector(dw,    dh, dd)
+    ppN = dt.Vector(dw,    dh, dd*-1)
+    pNp = dt.Vector(dw,    0,  dd)
+    Npp = dt.Vector(dw*-1, dh, dd)
+    pNN = dt.Vector(dw,    0,  dd*-1)
+    NNp = dt.Vector(dw*-1, 0,  dd)
+    NpN = dt.Vector(dw*-1, dh, dd*-1)
+    NNN = dt.Vector(dw*-1, 0,  dd*-1)
 
     points = getPointArrayWithOffset([peak,ppp,ppN,peak,NpN,ppN,NpN,peak,Npp,NpN,NNN,NNp,Npp,NpN,Npp,ppp,pNp,NNp,pNp,pNN,ppN,pNN,NNN], pos_offset, rot_offset)
 

@@ -31,8 +31,16 @@ Utilitie functions.
 # GLOBAL
 ##########################################################
 import os
+from functools import wraps
+import itertools
+
+from maya import cmds
+from maya import mel
+
 import mgear
 
+import pymel.core as pm
+import mgear
 
 ##########################################################
 # UTILS
@@ -49,6 +57,86 @@ def is_odd(num):
         bool: True or False
     """
     return num % 2
+
+
+def connectAttr(source, destination, **kwargs):
+    restore = False
+    if pm.getAttr(destination, lock=True):
+        restore = True
+        pm.setAttr(destination, lock=False)
+
+    res = pm.connectAttr(source, destination, **kwargs)
+
+    if restore:
+        pm.setAttr(destination, lock=True)
+
+    return res
+
+
+def parentConstraint(*args, **kwargs):
+    """
+    parentConstraint over locked attribute
+    """
+
+    needrestore = []
+    for att, axis in itertools.product(["t", "r", "s"], ["x", "y", "z"]):
+        target = "{}.{}".format(args[-1], att + axis)
+        if pm.getAttr(target, lock=True):
+            needrestore.append(target)
+            lock(target, False)
+
+    try:
+        res = pm.parentConstraint(*args, **kwargs)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise e
+
+    for target in needrestore:
+        lock(target, True)
+
+    return res
+
+
+def __inner(func, target):
+    try:
+        func(target)
+    except Exception as e:
+        import traceback
+        mgear.log(traceback.format_exc(), mgear.sev_info)
+        mgear.log(e, mgear.sev_error)
+
+
+def lock(target, value):
+    __inner(lambda x: pm.setAttr(x, lock=value), target)
+
+
+def keyable(target, value):
+    __inner(lambda x: pm.setAttr(x, keyable=value), target)
+
+
+def channelbox(target, value):
+    __inner(lambda x: pm.setAttr(x, channelBox=value), target)
+
+
+def setHidden(objs):
+    for obj in objs:
+
+        for shape in obj.getShapes():
+            try:
+                shape.attr("visibility").set(False)
+            except Exception as e:
+                import traceback
+                mgear.log(traceback.format_exc(), mgear.sev_info)
+                mgear.log(e, mgear.sev_error)
+
+
+def setLock(objs):
+    for obj in objs:
+        for att, axis in itertools.product(["t", "r", "s"], ["x", "y", "z"]):
+            lock("{}.{}".format(obj, att + axis), True)
+            keyable("{}.{}".format(obj, att + axis), False)
+            channelbox("{}.{}".format(obj, att + axis), False)
 
 
 def gatherCustomModuleDirectories(envvarkey, defaultModulePath):
@@ -141,3 +229,56 @@ def importFromStandardOrCustomDirectories(directories, defaultFormatter, customF
         module = __import__(module_name, globals(), locals(), ["*"], -1)
 
     return module
+
+
+# -----------------------------------------------------------------------------
+# Decorators
+# -----------------------------------------------------------------------------
+def viewport_off(func):
+    # type: (function) -> function
+    """
+    Decorator - turn off Maya display while func is running.
+    if func will fail, the error will be raised after.
+    """
+    @wraps(func)
+    def wrap(*args, **kwargs):
+        # type: (*str, **str) -> None
+
+        # Turn $gMainPane Off:
+        gMainPane = mel.eval('global string $gMainPane; $temp = $gMainPane;')
+        cmds.paneLayout(gMainPane, edit=True, manage=False)
+
+        try:
+            return func(*args, **kwargs)
+
+        except Exception as e:
+            raise e
+
+        finally:
+            cmds.paneLayout(gMainPane, edit=True, manage=True)
+
+    return wrap
+
+
+def one_undo(func):
+    # type: (function) -> function
+    """
+    Decorator - guarantee close chunk.
+    """
+    @wraps(func)
+    def wrap(*args, **kwargs):
+        # type: (*str, **str) -> None
+
+        try:
+            cmds.undoInfo(openChunk=True)
+            return func(*args, **kwargs)
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            raise e
+
+        finally:
+            cmds.undoInfo(closeChunk=True)
+
+    return wrap

@@ -37,6 +37,7 @@ import pymel.core.datatypes as dt
 
 # mgear
 import mgear
+import mgear.maya.utils as utils
 import mgear.maya.primitive as pri
 import mgear.maya.vector as vec
 import mgear.maya.transform as tra
@@ -87,7 +88,10 @@ class MainComponent(object):
 
         # --------------------------------------------------
         # Shortcut to useful settings
-        self.size = self.guide.size
+        if 0.0 < self.settings["size"]:
+            self.size = self.guide.size * self.settings["size"]
+        else:
+            self.size = self.guide.size
 
         self.color_fk = self.options[self.side + "_color_fk"]
         self.color_ik = self.options[self.side + "_color_ik"]
@@ -245,16 +249,16 @@ class MainComponent(object):
 
             mulmat_node = nod.createMultMatrixNode(obj + ".worldMatrix", jnt + ".parentInverseMatrix")
             dm_node = nod.createDecomposeMatrixNode(mulmat_node+".matrixSum")
-            pm.connectAttr(dm_node+".outputTranslate", jnt+".t")
-            pm.connectAttr(dm_node+".outputRotate", jnt+".r")
+            utils.connectAttr(dm_node+".outputTranslate", jnt+".t")
+            utils.connectAttr(dm_node+".outputRotate", jnt+".r")
             # TODO: fix squash stretch solver to scale the joint uniform
             # the next line cheat the uniform scaling only fo X or Y axis oriented joints
             if UniScale:
-                pm.connectAttr(dm_node+".outputScaleZ", jnt+".sx")
-                pm.connectAttr(dm_node+".outputScaleZ", jnt+".sy")
-                pm.connectAttr(dm_node+".outputScaleZ", jnt+".sz")
+                utils.connectAttr(dm_node+".outputScaleZ", jnt+".sx")
+                utils.connectAttr(dm_node+".outputScaleZ", jnt+".sy")
+                utils.connectAttr(dm_node+".outputScaleZ", jnt+".sz")
             else:
-                pm.connectAttr(dm_node+".outputScale", jnt+".s")
+                utils.connectAttr(dm_node+".outputScale", jnt+".s")
 
             # Segment scale compensate Off to avoid issues with the global scale
             jnt.setAttr("segmentScaleCompensate", 0)
@@ -272,7 +276,7 @@ class MainComponent(object):
 
         else:
             jnt = pri.addJoint(obj, self.getName(str(name)+"_jnt"), tra.getTransform(obj))
-            pm.connectAttr(self.rig.jntVis_att, jnt.attr("visibility"))
+            utils.connectAttr(self.rig.jntVis_att, jnt.attr("visibility"))
 
         self.addToGroup(jnt, "deformers")
         return jnt
@@ -558,6 +562,12 @@ class MainComponent(object):
         self.parent = self.rig.findRelative(parent_name)
         self.parent_comp = self.rig.findComponent(parent_name)
 
+        if self.parent_comp:
+            try:
+                self.parent_comp.child_comps.append(self)
+            except AttributeError:
+                self.parent_comp.child_comps = [self]
+
 
     def connect(self):
         """
@@ -619,12 +629,12 @@ class MainComponent(object):
                 for i, attr in enumerate(cns_attr):
                     pm.setAttr(attr, 1.0)
                     node_name = pm.createNode("condition")
-                    pm.connectAttr(self.ikref_att, node_name+".firstTerm")
+                    utils.connectAttr(self.ikref_att, node_name+".firstTerm")
                     pm.setAttr(node_name+".secondTerm", i)
                     pm.setAttr(node_name+".operation", 0)
                     pm.setAttr(node_name+".colorIfTrueR", 1)
                     pm.setAttr(node_name+".colorIfFalseR", 0)
-                    pm.connectAttr(node_name+".outColorR", attr)
+                    utils.connectAttr(node_name+".outColorR", attr)
 
     def connect_standardWithSimpleIkRef(self):
         """
@@ -655,8 +665,8 @@ class MainComponent(object):
                     ref.append(self.rig.findRelative(ref_name))
 
                 ref.append(self.ik_cns)
-                cns_node = pm.parentConstraint(*ref, maintainOffset=True)
-                cns_attr = pm.parentConstraint(cns_node, query=True, weightAliasList=True)
+                cns_node = utils.parentConstraint(*ref, maintainOffset=True)
+                cns_attr = utils.parentConstraint(cns_node, query=True, weightAliasList=True)
 
                 for i, attr in enumerate(cns_attr):
                     pm.setAttr(attr, 1.0)
@@ -676,28 +686,38 @@ class MainComponent(object):
             if len(ref_names) == 1:
                 ref = self.rig.findRelative(ref_names[0])
                 pm.parent(cns_obj, ref)
+
             else:
                 ref = []
                 for ref_name in ref_names:
+                    print "ref_name:", ref_name
                     ref.append(self.rig.findRelative(ref_name))
 
                 ref.append(cns_obj)
-                cns_node = pm.parentConstraint(*ref, maintainOffset=True)
-                cns_attr = pm.parentConstraint(cns_node, query=True, weightAliasList=True)
+                cns_node = utils.parentConstraint(*ref, maintainOffset=True)
+                cns_attr = utils.parentConstraint(cns_node, query=True, weightAliasList=True)
+
                 # check if the ref Array is for IK or Up vector
                 if upVAttr:
                     oAttr = self.upvref_att
                 else:
                     oAttr = self.ikref_att
 
+                if oAttr is None:
+                    mgear.log("{} has not reference attribute".format(self.name), mgear.sev_error)
+                    return
+
                 for i, attr in enumerate(cns_attr):
+
                     node_name = pm.createNode("condition")
-                    pm.connectAttr(oAttr, node_name+".firstTerm")
-                    pm.setAttr(node_name+".secondTerm", i)
-                    pm.setAttr(node_name+".operation", 0)
-                    pm.setAttr(node_name+".colorIfTrueR", 1)
-                    pm.setAttr(node_name+".colorIfFalseR", 0)
-                    pm.connectAttr(node_name+".outColorR", attr)
+                    print "attr:", oAttr, attr, node_name
+
+                    utils.connectAttr(oAttr, node_name + ".firstTerm")
+                    pm.setAttr(node_name + ".secondTerm", i)
+                    pm.setAttr(node_name + ".operation", 0)
+                    pm.setAttr(node_name + ".colorIfTrueR", 1)
+                    pm.setAttr(node_name + ".colorIfFalseR", 0)
+                    utils.connectAttr(node_name + ".outColorR", attr)
 
     def connectRef2(self, refArray, cns_obj, in_attr, init_ref=False, skipTranslate = False  ):
         """
@@ -727,19 +747,19 @@ class MainComponent(object):
                     ref = init_ref + ref 
                 ref.append(cns_obj)
                 if skipTranslate:
-                    cns_node = pm.parentConstraint(*ref, maintainOffset=True, skipTranslate=["x","y","z"])
+                    cns_node = utils.parentConstraint(*ref, maintainOffset=True, skipTranslate=["x","y","z"])
                 else:
-                    cns_node = pm.parentConstraint(*ref, maintainOffset=True)
-                cns_attr = pm.parentConstraint(cns_node, query=True, weightAliasList=True)
+                    cns_node = utils.parentConstraint(*ref, maintainOffset=True)
+                cns_attr = utils.parentConstraint(cns_node, query=True, weightAliasList=True)
 
                 for i, attr in enumerate(cns_attr):
                     node_name = pm.createNode("condition")
-                    pm.connectAttr(in_attr, node_name+".firstTerm")
+                    utils.connectAttr(in_attr, node_name+".firstTerm")
                     pm.setAttr(node_name+".secondTerm", i)
                     pm.setAttr(node_name+".operation", 0)
                     pm.setAttr(node_name+".colorIfTrueR", 1)
                     pm.setAttr(node_name+".colorIfFalseR", 0)
-                    pm.connectAttr(node_name+".outColorR", attr)
+                    utils.connectAttr(node_name+".outColorR", attr)
 
     def connect_standardWithRotRef(self, refArray, cns_obj):
         """
@@ -758,16 +778,16 @@ class MainComponent(object):
                     ref.append(self.rig.findRelative(ref_name))
 
                 ref.append(cns_obj)
-                cns_node = pm.parentConstraint(*ref, maintainOffset=True, skipTranslate=["x","y","z"])
-                cns_attr = pm.parentConstraint(cns_node, query=True, weightAliasList=True)
+                cns_node = utils.parentConstraint(*ref, maintainOffset=True, skipTranslate=["x","y","z"])
+                cns_attr = utils.parentConstraint(cns_node, query=True, weightAliasList=True)
                 for i, attr in enumerate(cns_attr):
                     node_name = pm.createNode("condition")
-                    pm.connectAttr(self.ref_att, node_name+".firstTerm")
+                    utils.connectAttr(self.ref_att, node_name+".firstTerm")
                     pm.setAttr(node_name+".secondTerm", i)
                     pm.setAttr(node_name+".operation", 0)
                     pm.setAttr(node_name+".colorIfTrueR", 1)
                     pm.setAttr(node_name+".colorIfFalseR", 0)
-                    pm.connectAttr(node_name+".outColorR", attr)
+                    utils.connectAttr(node_name+".outColorR", attr)
 
 
     def postConnect(self):

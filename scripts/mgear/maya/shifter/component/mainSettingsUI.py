@@ -1,4 +1,5 @@
 # MGEAR is under the terms of the MIT License
+# -*- coding: utf-8 -*-
 
 # Copyright (c) 2016 Jeremie Passerin, Miquel Campos
 
@@ -25,36 +26,79 @@
 # Date:       2016 / 10 / 10
 
 import mgear.maya.pyqt as gqt
-QtGui, QtCore, QtWidgets, wrapInstance = gqt.qt_import()
+try:
+    from PySide import QtGui, QtCore
+    import PySide.QtGui as QtWidgets
+    from PySide.QtGui import QSizePolicy
+    from PySide.QtGui import QGroupBox
+    from PySide.QtGui import QWidget
+    from PySide.QtGui import QVBoxLayout
+    from PySide.QtGui import QGridLayout
+    from PySide.QtGui import QListWidget
+    from PySide.QtGui import QAbstractItemView
+    from PySide.QtGui import QListView
+    from PySide.QtGui import QPushButton
+    from PySide.QtGui import QHBoxLayout
+    from PySide.QtGui import QSpacerItem
+    from PySide.QtGui import QApplication
+    from PySide.QtGui import QMessageBox
+    from PySide.QtGui import QInputDialog
+    from PySide.QtGui import QLineEdit
+    from PySide.QtGui import *
+    from shiboken import wrapInstance
+
+except ImportError:
+    from PySide2 import QtGui, QtCore, QtWidgets
+    from PySide2.QtWidgets import QSizePolicy
+    from PySide2.QtWidgets import QGroupBox
+    from PySide2.QtWidgets import QWidget
+
+    from PySide2.QtWidgets import QVBoxLayout
+    from PySide2.QtWidgets import QGridLayout
+    from PySide2.QtWidgets import QListWidget
+    from PySide2.QtWidgets import QAbstractItemView
+    from PySide2.QtWidgets import QListView
+    from PySide2.QtWidgets import QPushButton
+    from PySide2.QtWidgets import QHBoxLayout
+    from PySide2.QtWidgets import QSpacerItem
+    from PySide2.QtWidgets import QApplication
+    from PySide2.QtWidgets import QMessageBox
+    from PySide2.QtWidgets import QInputDialog
+    from PySide2.QtWidgets import QLineEdit
+    from PySide2.QtWidgets import *
+
+    QApplication.UnicodeUTF8 = 0
+
+    from shiboken2 import wrapInstance
 
 class Ui_Form(object):
     def setupUi(self, Form):
         Form.setObjectName("Form")
-        Form.resize(269, 293)
-        self.jointConnexionSettings_groupBox = QtWidgets.QGroupBox(Form)
-        self.jointConnexionSettings_groupBox.setGeometry(QtCore.QRect(11, 136, 249, 81))
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+        Form.resize(269, 315)
+        self.jointConnexionSettings_groupBox = QGroupBox(Form)
+        self.jointConnexionSettings_groupBox.setGeometry(QtCore.QRect(11, 156, 249, 81))
+        sizePolicy = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.jointConnexionSettings_groupBox.sizePolicy().hasHeightForWidth())
         self.jointConnexionSettings_groupBox.setSizePolicy(sizePolicy)
         self.jointConnexionSettings_groupBox.setObjectName("jointConnexionSettings_groupBox")
-        self.widget = QtWidgets.QWidget(self.jointConnexionSettings_groupBox)
-        self.widget.setGeometry(QtCore.QRect(10, 16, 231, 47))
-        self.widget.setObjectName("widget")
-        self.verticalLayout = QtWidgets.QVBoxLayout(self.widget)
+        self.layoutWidget = QWidget(self.jointConnexionSettings_groupBox)
+        self.layoutWidget.setGeometry(QtCore.QRect(10, 16, 231, 47))
+        self.layoutWidget.setObjectName("layoutWidget")
+        self.verticalLayout = QVBoxLayout(self.layoutWidget)
         self.verticalLayout.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout.setObjectName("verticalLayout")
-        self.useJointIndex_checkBox = QtWidgets.QCheckBox(self.widget)
+        self.useJointIndex_checkBox = QCheckBox(self.layoutWidget)
         self.useJointIndex_checkBox.setObjectName("useJointIndex_checkBox")
         self.verticalLayout.addWidget(self.useJointIndex_checkBox)
-        self.horizontalLayout = QtWidgets.QHBoxLayout()
+        self.horizontalLayout = QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
-        self.parentJointIndex_label = QtWidgets.QLabel(self.widget)
+        self.parentJointIndex_label = QLabel(self.layoutWidget)
         self.parentJointIndex_label.setObjectName("parentJointIndex_label")
         self.horizontalLayout.addWidget(self.parentJointIndex_label)
-        self.parentJointIndex_spinBox = QtWidgets.QSpinBox(self.widget)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        self.parentJointIndex_spinBox = QSpinBox(self.layoutWidget)
+        sizePolicy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.parentJointIndex_spinBox.sizePolicy().hasHeightForWidth())
@@ -65,50 +109,51 @@ class Ui_Form(object):
         self.parentJointIndex_spinBox.setObjectName("parentJointIndex_spinBox")
         self.horizontalLayout.addWidget(self.parentJointIndex_spinBox)
         self.verticalLayout.addLayout(self.horizontalLayout)
-        self.groupBox = QtWidgets.QGroupBox(Form)
-        self.groupBox.setGeometry(QtCore.QRect(11, 220, 249, 61))
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+        self.groupBox = QGroupBox(Form)
+        self.groupBox.setGeometry(QtCore.QRect(11, 240, 249, 61))
+        sizePolicy = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.groupBox.sizePolicy().hasHeightForWidth())
         self.groupBox.setSizePolicy(sizePolicy)
         self.groupBox.setObjectName("groupBox")
-        self.widget1 = QtWidgets.QWidget(self.groupBox)
-        self.widget1.setGeometry(QtCore.QRect(10, 19, 231, 25))
-        self.widget1.setObjectName("widget1")
-        self.horizontalLayout_2 = QtWidgets.QHBoxLayout(self.widget1)
+        self.layoutWidget1 = QWidget(self.groupBox)
+        self.layoutWidget1.setGeometry(QtCore.QRect(10, 19, 231, 25))
+        self.layoutWidget1.setObjectName("layoutWidget1")
+        self.horizontalLayout_2 = QHBoxLayout(self.layoutWidget1)
         self.horizontalLayout_2.setContentsMargins(0, 0, 0, 0)
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
-        self.host_label = QtWidgets.QLabel(self.widget1)
+        self.host_label = QLabel(self.layoutWidget1)
         self.host_label.setObjectName("host_label")
         self.horizontalLayout_2.addWidget(self.host_label)
-        self.host_lineEdit = QtWidgets.QLineEdit(self.widget1)
+        self.host_lineEdit = QLineEdit(self.layoutWidget1)
         self.host_lineEdit.setObjectName("host_lineEdit")
         self.horizontalLayout_2.addWidget(self.host_lineEdit)
-        self.host_pushButton = QtWidgets.QPushButton(self.widget1)
+        self.host_pushButton = QPushButton(self.layoutWidget1)
         self.host_pushButton.setObjectName("host_pushButton")
         self.horizontalLayout_2.addWidget(self.host_pushButton)
-        self.mainSettings_groupBox = QtWidgets.QGroupBox(Form)
-        self.mainSettings_groupBox.setGeometry(QtCore.QRect(11, 11, 249, 119))
+        self.mainSettings_groupBox = QGroupBox(Form)
+        self.mainSettings_groupBox.setGeometry(QtCore.QRect(11, 11, 249, 139))
         self.mainSettings_groupBox.setTitle("")
         self.mainSettings_groupBox.setObjectName("mainSettings_groupBox")
-        self.widget2 = QtWidgets.QWidget(self.mainSettings_groupBox)
-        self.widget2.setGeometry(QtCore.QRect(10, 10, 231, 100))
-        self.widget2.setObjectName("widget2")
-        self.formLayout = QtWidgets.QFormLayout(self.widget2)
+        self.layoutWidget2 = QWidget(self.mainSettings_groupBox)
+        self.layoutWidget2.setGeometry(QtCore.QRect(10, 10, 231, 126))
+        self.layoutWidget2.setObjectName("layoutWidget2")
+        self.formLayout = QFormLayout(self.layoutWidget2)
+        self.formLayout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
         self.formLayout.setContentsMargins(0, 0, 0, 0)
         self.formLayout.setObjectName("formLayout")
-        self.name_label = QtWidgets.QLabel(self.widget2)
+        self.name_label = QLabel(self.layoutWidget2)
         self.name_label.setObjectName("name_label")
-        self.formLayout.setWidget(0, QtWidgets.QFormLayout.LabelRole, self.name_label)
-        self.name_lineEdit = QtWidgets.QLineEdit(self.widget2)
+        self.formLayout.setWidget(0, QFormLayout.LabelRole, self.name_label)
+        self.name_lineEdit = QLineEdit(self.layoutWidget2)
         self.name_lineEdit.setObjectName("name_lineEdit")
-        self.formLayout.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.name_lineEdit)
-        self.side_label = QtWidgets.QLabel(self.widget2)
+        self.formLayout.setWidget(0, QFormLayout.FieldRole, self.name_lineEdit)
+        self.side_label = QLabel(self.layoutWidget2)
         self.side_label.setObjectName("side_label")
-        self.formLayout.setWidget(1, QtWidgets.QFormLayout.LabelRole, self.side_label)
-        self.side_comboBox = QtWidgets.QComboBox(self.widget2)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        self.formLayout.setWidget(1, QFormLayout.LabelRole, self.side_label)
+        self.side_comboBox = QComboBox(self.layoutWidget2)
+        sizePolicy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.side_comboBox.sizePolicy().hasHeightForWidth())
@@ -117,48 +162,56 @@ class Ui_Form(object):
         self.side_comboBox.addItem("")
         self.side_comboBox.addItem("")
         self.side_comboBox.addItem("")
-        self.formLayout.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.side_comboBox)
-        self.componentIndex_label = QtWidgets.QLabel(self.widget2)
+        self.formLayout.setWidget(1, QFormLayout.FieldRole, self.side_comboBox)
+        self.componentIndex_label = QLabel(self.layoutWidget2)
         self.componentIndex_label.setObjectName("componentIndex_label")
-        self.formLayout.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.componentIndex_label)
-        self.componentIndex_spinBox = QtWidgets.QSpinBox(self.widget2)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        self.formLayout.setWidget(2, QFormLayout.LabelRole, self.componentIndex_label)
+        self.componentIndex_spinBox = QSpinBox(self.layoutWidget2)
+        sizePolicy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.componentIndex_spinBox.sizePolicy().hasHeightForWidth())
         self.componentIndex_spinBox.setSizePolicy(sizePolicy)
         self.componentIndex_spinBox.setObjectName("componentIndex_spinBox")
-        self.formLayout.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.componentIndex_spinBox)
-        self.conector_label = QtWidgets.QLabel(self.widget2)
+        self.formLayout.setWidget(2, QFormLayout.FieldRole, self.componentIndex_spinBox)
+        self.conector_label = QLabel(self.layoutWidget2)
         self.conector_label.setObjectName("conector_label")
-        self.formLayout.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.conector_label)
-        self.connector_comboBox = QtWidgets.QComboBox(self.widget2)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        self.formLayout.setWidget(3, QFormLayout.LabelRole, self.conector_label)
+        self.connector_comboBox = QComboBox(self.layoutWidget2)
+        sizePolicy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.connector_comboBox.sizePolicy().hasHeightForWidth())
         self.connector_comboBox.setSizePolicy(sizePolicy)
         self.connector_comboBox.setObjectName("connector_comboBox")
         self.connector_comboBox.addItem("")
-        self.formLayout.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.connector_comboBox)
+        self.formLayout.setWidget(3, QFormLayout.FieldRole, self.connector_comboBox)
+        self.size_label = QLabel(self.layoutWidget2)
+        self.size_label.setObjectName("size_label")
+        self.formLayout.setWidget(4, QFormLayout.LabelRole, self.size_label)
+        self.size_spinBox = QSpinBox(self.layoutWidget2)
+        self.size_spinBox.setMaximum(9999)
+        self.size_spinBox.setObjectName("size_spinBox")
+        self.formLayout.setWidget(4, QFormLayout.FieldRole, self.size_spinBox)
 
         self.retranslateUi(Form)
         QtCore.QMetaObject.connectSlotsByName(Form)
 
     def retranslateUi(self, Form):
-        Form.setWindowTitle(gqt.fakeTranslate("Form", "Form", None, -1))
-        self.jointConnexionSettings_groupBox.setTitle(gqt.fakeTranslate("Form", "Joint Connexion Settings", None, -1))
-        self.useJointIndex_checkBox.setText(gqt.fakeTranslate("Form", "Use Joint Index", None, -1))
-        self.parentJointIndex_label.setText(gqt.fakeTranslate("Form", "Parent Joint Index:", None, -1))
-        self.groupBox.setTitle(gqt.fakeTranslate("Form", "Channels Host Settings", None, -1))
-        self.host_label.setText(gqt.fakeTranslate("Form", "Host:", None, -1))
-        self.host_pushButton.setText(gqt.fakeTranslate("Form", "<<", None, -1))
-        self.name_label.setText(gqt.fakeTranslate("Form", "Name:", None, -1))
-        self.side_label.setText(gqt.fakeTranslate("Form", "Side:", None, -1))
-        self.side_comboBox.setItemText(0, gqt.fakeTranslate("Form", "Center", None, -1))
-        self.side_comboBox.setItemText(1, gqt.fakeTranslate("Form", "Left", None, -1))
-        self.side_comboBox.setItemText(2, gqt.fakeTranslate("Form", "Right", None, -1))
-        self.componentIndex_label.setText(gqt.fakeTranslate("Form", "Component Index:", None, -1))
-        self.conector_label.setText(gqt.fakeTranslate("Form", "Connector:", None, -1))
-        self.connector_comboBox.setItemText(0, gqt.fakeTranslate("Form", "standard", None, -1))
+        Form.setWindowTitle(QApplication.translate("Form", "Form", None, QApplication.UnicodeUTF8))
+        self.jointConnexionSettings_groupBox.setTitle(QApplication.translate("Form", "Joint Connexion Settings", None, QApplication.UnicodeUTF8))
+        self.useJointIndex_checkBox.setText(QApplication.translate("Form", "Use Joint Index", None, QApplication.UnicodeUTF8))
+        self.parentJointIndex_label.setText(QApplication.translate("Form", "Parent Joint Index:", None, QApplication.UnicodeUTF8))
+        self.groupBox.setTitle(QApplication.translate("Form", "Channels Host Settings", None, QApplication.UnicodeUTF8))
+        self.host_label.setText(QApplication.translate("Form", "Host:", None, QApplication.UnicodeUTF8))
+        self.host_pushButton.setText(QApplication.translate("Form", "<<", None, QApplication.UnicodeUTF8))
+        self.name_label.setText(QApplication.translate("Form", "Name:", None, QApplication.UnicodeUTF8))
+        self.side_label.setText(QApplication.translate("Form", "Side:", None, QApplication.UnicodeUTF8))
+        self.side_comboBox.setItemText(0, QApplication.translate("Form", "Center", None, QApplication.UnicodeUTF8))
+        self.side_comboBox.setItemText(1, QApplication.translate("Form", "Left", None, QApplication.UnicodeUTF8))
+        self.side_comboBox.setItemText(2, QApplication.translate("Form", "Right", None, QApplication.UnicodeUTF8))
+        self.componentIndex_label.setText(QApplication.translate("Form", "Component Index:", None, QApplication.UnicodeUTF8))
+        self.conector_label.setText(QApplication.translate("Form", "Connector:", None, QApplication.UnicodeUTF8))
+        self.connector_comboBox.setItemText(0, QApplication.translate("Form", "standard", None, QApplication.UnicodeUTF8))
+        self.size_label.setText(QApplication.translate("Form", "Size", None, QApplication.UnicodeUTF8))
 

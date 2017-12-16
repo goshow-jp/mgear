@@ -74,16 +74,6 @@ COMPONENTS_DIRECTORIES = mgear.maya.utils.gatherCustomModuleDirectories(
     os.path.join(os.path.dirname(__file__), "component"))
 
 
-def importComponentGuide(comp_type):
-    import mgear.maya.shifter as shifter
-    dirs = shifter.COMPONENTS_DIRECTORIES
-    defFmt = "mgear.maya.shifter.component.{}.guide"
-    customFmt = "{0}.{1}.guide"
-
-    module = mgear.maya.utils.importFromStandardOrCustomDirectories(dirs, defFmt, customFmt, comp_type)
-    return module
-
-
 def importComponent(comp_type):
     import mgear.maya.shifter as shifter
     dirs = shifter.COMPONENTS_DIRECTORIES
@@ -92,6 +82,24 @@ def importComponent(comp_type):
 
     module = mgear.maya.utils.importFromStandardOrCustomDirectories(dirs, defFmt, customFmt, comp_type)
     return module
+
+
+def importComponentSubModule(comp_type, module_name):
+    import mgear.maya.shifter as shifter
+    dirs = shifter.COMPONENTS_DIRECTORIES
+    defFmt = "mgear.maya.shifter.component.{{}}.{}".format(module_name)
+    customFmt = "{{0}}.{{1}}.{}".format(module_name)
+
+    module = mgear.maya.utils.importFromStandardOrCustomDirectories(dirs, defFmt, customFmt, comp_type)
+    return module
+
+
+def importComponentGuide(comp_type):
+    return importComponentSubModule(comp_type, "guide")
+
+
+def importComponentController(comp_type):
+    return importComponentSubModule(comp_type, "controller")
 
 
 ##########################################################
@@ -151,11 +159,18 @@ class Rig(object):
         self.options = self.guide.values
         self.guides = self.guide.components
 
-        self.preCustomStep()
-        self.initialHierarchy()
-        self.processComponents()
-        self.finalize()
-        self.postCustomStep()
+        try:
+            self.preCustomStep()
+            self.initialHierarchy()
+            self.processComponents()
+            self.finalize()
+            self.postCustomStep()
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+
+            raise e
 
         return self.model
 

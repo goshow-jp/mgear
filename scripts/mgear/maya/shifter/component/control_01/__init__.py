@@ -43,8 +43,7 @@ import mgear.maya.attribute as att
 class Component(MainComponent):
 
     def addObjects(self):
-
-       
+        size = self.size
 
         if self.settings["neutralRotation"]:
             t = tra.getTransformFromPos(self.guide.pos["root"])
@@ -53,7 +52,7 @@ class Component(MainComponent):
             t = tra.setMatrixScale(t)
         self.ik_cns = pri.addTransform(self.root, self.getName("ik_cns"), t)
 
-        self.ctl = self.addCtl(self.ik_cns, "ctl", t, self.color_ik, self.settings["icon"], w=self.settings["ctlSize"], h=self.settings["ctlSize"], d=self.settings["ctlSize"])
+        self.ctl = self.addCtl(self.ik_cns, "ctl", t, self.color_ik, self.settings["icon"], h=size, w=size, d=size)
 
         params = [ s for s in ["tx", "ty", "tz", "ro", "rx", "ry", "rz", "sx", "sy", "sz"] if self.settings["k_"+s] ]
         att.setKeyableAttributes(self.ctl, params)

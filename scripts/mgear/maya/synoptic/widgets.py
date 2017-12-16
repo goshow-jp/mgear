@@ -27,18 +27,129 @@
 ##################################################
 # GLOBAL
 ##################################################
+import traceback
+from functools import wraps
+
+import maya.cmds as cmds
+
+import mgear
 import mgear.maya.pyqt as gqt
-from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
-from maya.app.general.mayaMixin import MayaQDockWidget
+import mgear.maya.shifter as shifter
+import mgear.maya.synoptic.utils as syn_uti
+
+# from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
+# from maya.app.general.mayaMixin import MayaQDockWidget
 QtGui, QtCore, QtWidgets, wrapInstance = gqt.qt_import()
 
-import mgear.maya.synoptic.utils as syn_uti
+
+##################################################
+# Decorator
+##################################################
+def execute_in_shifter_controller(func):
+    # type: (function) -> function
+    """
+    Decorator - Execute in specified component module's scope or
+                exceute wrapped method directory if not specified or not exists.
+    """
+
+    @wraps(func)
+    def wrap(*args, **kwargs):
+        # type: (*str, **str) -> None
+
+        self = args[0]
+        args = args[1:]
+
+        try:
+            if not hasattr(self, "shifter_controller") or self.shifter_controller is None:
+
+                self.shifter_controller = searchShifterController(self)
+
+            if self != self.shifter_controller and hasattr(self.shifter_controller, func.func_name):
+                return getattr(self.shifter_controller, func.func_name)(*args, **kwargs)
+
+            else:
+                # fallback
+                return func(self, *args, **kwargs)
+
+        except Exception as e:
+            traceback.print_exc()
+            raise e
+
+    return wrap
+
+
+def searchShifterController(target_button):
+    # type: (QtWidgets.QObject) -> object
+    """Returns shifter component module class on behalf of target_button."""
+
+    comp_name = target_button.property("component")
+    class_name = type(target_button).__name__
+
+    if comp_name is not None:
+        controller = shifter.importComponentController(comp_name)
+
+        if controller:
+            try:
+                button = getattr(controller, class_name)
+                return button(target_button)
+
+            except AttributeError:
+                return target_button
+
+        else:
+            mgear.log("Can't find target component controller module: {0}".format(comp_name), mgear.sev_error)
+            return target_button
+
+    else:
+        return target_button
 
 
 ##################################################
 # PROMOTED WIDGETS
 ##################################################
 # They must be declared first because they are used in the widget.ui
+
+class LabeledFrame(QtWidgets.QFrame):
+
+    margin = 8
+    padding = 8
+    color_over = QtGui.QColor(255, 255, 255, 255)
+    borderColor = QtGui.QColor(172, 168, 167, 255)
+    resized = None
+
+    def __init__(self, parent=None):
+        super(LabeledFrame, self).__init__(parent)
+        self.innerFrame = QtWidgets.QFrame(parent=self)
+        self.innerFrame.setStyleSheet("""
+            border: 1px solid #aca8a7;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px;
+        """)
+
+        self.label = QtWidgets.QLabel(parent=self)
+        self.label.setStyleSheet("""
+            color: #bbbbbb;
+        """)
+
+    def calcTextLength(self, text):
+        return len(text) * 16
+
+    def paintEvent(self, event):
+        if not self.resized:
+
+            w = self.width()
+            h = self.height()
+            self.innerFrame.setGeometry(0, 0, w, h)
+
+            text = self.property("text") or ""
+            textWidth = self.calcTextLength(text)
+            self.label.setText(text)
+            self.label.setGeometry((w - textWidth) / 2.0, 0, textWidth, 25)
+            self.label.setAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+
+            self.resized = True
+
 
 class toggleCombo(QtWidgets.QComboBox):
 
@@ -52,9 +163,9 @@ class toggleCombo(QtWidgets.QComboBox):
     def wheelEvent (self, event):
         event.ignore()
 
-
     # def focusInEvent(self, event):
-    def enterEvent(self, event):
+    @execute_in_shifter_controller
+    def enterEvent(self, event, *args):
         self.model = syn_uti.getModel(self)
         self.uihost_name = str(self.property("Object"))
         self.combo_attr = str(self.property("Attr"))
@@ -66,13 +177,14 @@ class toggleCombo(QtWidgets.QComboBox):
         self.setCurrentIndex(syn_uti.getComboIndex( self.model, self.uihost_name, self.combo_attr))
         self.firstUpdate = True 
 
-    def handleChanged(self):
+    @execute_in_shifter_controller
+    def handleChanged(self, *args):
         if self.firstUpdate:
             if self.currentIndex() == self.count() -1:
                 print "Space Transfer"
                 self.setCurrentIndex(syn_uti.getComboIndex( self.model, self.uihost_name, self.combo_attr))
                 # self.setCurrentIndex(0)
-                syn_uti.showSpaceTransferUI(self, self.model, self.uihost_name, self.combo_attr, self.ctl_name)
+                syn_uti.ParentSpaceTransfer.showUI(self, self.model, self.uihost_name, self.combo_attr, self.ctl_name)
 
             else:
                 syn_uti.changeSpace(self.model, self.uihost_name, self.combo_attr, self.currentIndex(), self.ctl_name)
@@ -84,25 +196,160 @@ class bakeMocap(QtWidgets.QPushButton):
         model = syn_uti.getModel(self)
         syn_uti.bakeMocap(model)
 
-class ikfkMatchButton(QtWidgets.QPushButton):
 
+class ikfkMatchAllButton(QtWidgets.QPushButton):
+
+    MAXIMUM_TRY_FOR_SEARCHING_FK = 1000
+
+    def __init__(self, *args, **kwargs):
+        # type: (*str, **str) -> None
+        super(ikfkMatchAllButton, self).__init__(*args, **kwargs)
+        self.ikfkButtons = []
+        self.shifter_controller = None
+
+    @execute_in_shifter_controller
+    def searchButtonByName(self, name):
+        # type: (str) -> list[ikfkMatchButton]
+        """search and return ikfkMatchButton s that has been named 'name'."""
+
+        parent = self.parent()
+        kids = parent.findChildren(ikfkMatchButton)
+        for k in kids:
+            # print(k.objectName())
+            if name == k.objectName():
+                return k
+        else:
+            mgear.log("Can't find ikfkMatchButton: {0}".format(name), mgear.sev_error)
+
+    @execute_in_shifter_controller
     def mousePressEvent(self, event):
+        # type: (QtCore.QEvent) -> None
 
-        model = syn_uti.getModel(self)
-        ikfk_attr = str(self.property("ikfk_attr"))
-        uiHost_name = str(self.property("uiHost_name"))
-        fk0 = str(self.property("fk0"))
-        fk1 = str(self.property("fk1"))
-        fk2 = str(self.property("fk2"))
-        ik = str(self.property("ik"))
-        upv = str(self.property("upv"))
+        # gather ikfkMatchButton s by this ikfkMatchAllButton's "buttons" property
+        if not self.ikfkButtons:
+            self.ikfkButtons = [self.searchButtonByName(x) for x in self.property("buttons")]
+
+        for button in self.ikfkButtons:
+            if not button.isControllerSetup():
+                button.lookupControllers()
+
+        which = self.determineWhichToChange(self.ikfkButtons)
 
         mouse_button = event.button()
+        if mouse_button == QtCore.Qt.RightButton:
+            model = syn_uti.getModel(self)
 
-        syn_uti.ikFkMatch(model, ikfk_attr, uiHost_name, fk0, fk1, fk2, ik, upv)
+            for button in self.ikfkButtons:
+                if which == "fk":
+                    syn_uti.IkFkTransfer.toFK(
+                        model, button.ikfk_attr, button.uiHost_name, button.fks, button.ik, button.upv)
+                else:
+                    syn_uti.IkFkTransfer.toIK(
+                        model, button.ikfk_attr, button.uiHost_name, button.fks, button.ik, button.upv)
+
+        else:
+            for button in self.ikfkButtons:
+                button.mousePressEvent(event)
+            return
+
+    @execute_in_shifter_controller
+    def determineWhichToChange(self, buttons):
+        # type: (list[ikfkMatchButton]) -> str
+        """determine which to change, to fk or to ik."""
+
+        model = syn_uti.getModel(self)
+        ns = syn_uti.getNamespace(model)
+        attrs = []
+        for button in buttons:
+            shortName = "{}.{}".format(button.uiHost_name, button.ikfk_attr)
+            attrs.append(cmds.getAttr(":".join([ns, shortName])))
+
+        if 0.5 < (sum(attrs) / len(attrs)):
+            return "fk"
+        else:
+            return "ik"
+
+
+class ikfkMatchButton(QtWidgets.QPushButton):
+
+    MAXIMUM_TRY_FOR_SEARCHING_FK = 1000
+
+    def __init__(self, *args, **kwargs):
+        # type: (*str, **str) -> None
+        super(ikfkMatchButton, self).__init__(*args, **kwargs)
+        self.shifter_controller = None
+
+        self.numFkControllers = None
+
+        self.ikfk_attr = None
+        self.uiHost_name = None
+        self.fks = None
+        self.ik = None
+        self.upv = None
+
+    @execute_in_shifter_controller
+    def searchNumberOfFkControllers(self):
+        # type: () -> None
+
+        for i in range(self.MAXIMUM_TRY_FOR_SEARCHING_FK):
+            prop = self.property("fk{0}".format(str(i)))
+            if not prop:
+                self.numFkControllers = i
+                break
+
+    @execute_in_shifter_controller
+    def isControllerSetup(self):
+        # type: () -> bool
+
+        for prop in [self.ikfk_attr, self.uiHost_name, self.fks, self.ik, self.upv]:
+            if not prop:
+                return False
+        else:
+            return True
+
+    @execute_in_shifter_controller
+    def lookupControllers(self):
+        # type: () -> None
+
+        self.ikfk_attr = str(self.property("ikfk_attr"))
+        self.uiHost_name = str(self.property("uiHost_name"))
+
+        if not self.numFkControllers:
+            self.searchNumberOfFkControllers()
+
+        self.fks = []
+        for i in range(self.numFkControllers):
+            label = "fk{0}".format(str(i))
+            prop = str(self.property(label))
+            self.fks.append(prop)
+
+        self.ik = str(self.property("ik"))
+        self.upv = str(self.property("upv"))
+
+    @execute_in_shifter_controller
+    def mousePressEvent(self, event):
+        # type: (QtCore.QEvent) -> None
+
+        mouse_button = event.button()
+        model = syn_uti.getModel(self)
+
+        if not self.isControllerSetup():
+            self.lookupControllers()
+
+        if mouse_button == QtCore.Qt.RightButton:
+            syn_uti.IkFkTransfer.showUI(
+                model, self.ikfk_attr, self.uiHost_name, self.fks, self.ik, self.upv)
+            return
+
+        else:
+            syn_uti.ikFkMatch(
+                model, self.ikfk_attr, self.uiHost_name, self.fks, self.ik, self.upv)
+            return
+
 
 class toggleAttrButton(QtWidgets.QPushButton):
 
+    @execute_in_shifter_controller
     def mousePressEvent(self, event):
 
         model = syn_uti.getModel(self)
@@ -115,6 +362,7 @@ class toggleAttrButton(QtWidgets.QPushButton):
 
 class resetTransform(QtWidgets.QPushButton):
 
+    @execute_in_shifter_controller
     def mousePressEvent(self, event):
         mouse_button = event.button()
         syn_uti.resetSelTrans()
@@ -122,6 +370,7 @@ class resetTransform(QtWidgets.QPushButton):
 
 class resetBindPose(QtWidgets.QPushButton):
 
+    @execute_in_shifter_controller
     def mousePressEvent(self, event):
 
         model = syn_uti.getModel(self)
@@ -131,6 +380,7 @@ class resetBindPose(QtWidgets.QPushButton):
 
 class MirrorPoseButton(QtWidgets.QPushButton):
 
+    @execute_in_shifter_controller
     def mousePressEvent(self, event):
 
         mouse_button = event.button()
@@ -138,6 +388,7 @@ class MirrorPoseButton(QtWidgets.QPushButton):
 
 class FlipPoseButton(QtWidgets.QPushButton):
 
+    @execute_in_shifter_controller
     def mousePressEvent(self, event):
 
         mouse_button = event.button()
@@ -145,6 +396,7 @@ class FlipPoseButton(QtWidgets.QPushButton):
 
 class QuickSelButton(QtWidgets.QPushButton):
 
+    @execute_in_shifter_controller
     def mousePressEvent(self, event):
 
         model = syn_uti.getModel(self)
@@ -162,21 +414,25 @@ class SelectButton(QtWidgets.QWidget):
         self.defaultBGColor = QtGui.QPalette().color(self.backgroundRole())
         self.setBorderColor(self.defaultBGColor)
         p = self.palette()
-        p.setColor(self.foregroundRole(),QtGui.QColor(000, 000, 000, 000))
-        p.setColor(self.backgroundRole(),QtGui.QColor(000, 000, 000, 000))
+        p.setColor(self.foregroundRole(), QtGui.QColor(000, 000, 000, 000))
+        p.setColor(self.backgroundRole(), QtGui.QColor(000, 000, 000, 000))
         self.setPalette(p)
 
-
     def enterEvent(self, event):
+
         self.over = True
         self.repaint()
         self.update()
+        self.setToolTip(self.property("object"))
+        QtWidgets.QWidget.enterEvent(self, event)
 
     def leaveEvent(self, event):
         self.over = False
         self.repaint()
         self.update()
+        QtWidgets.QWidget.leaveEvent(self, event)
 
+    @execute_in_shifter_controller
     def rectangleSelection(self,event, firstLoop):
         if firstLoop:
             key_modifier = event.modifiers()
@@ -188,6 +444,7 @@ class SelectButton(QtWidgets.QWidget):
         mouse_button = event.button()
         syn_uti.selectObj(model, object, mouse_button, key_modifier)
 
+    @execute_in_shifter_controller
     def mousePressEvent(self, event):
 
         model = syn_uti.getModel(self)
@@ -230,6 +487,9 @@ class SelectButton(QtWidgets.QWidget):
         painter.drawPath(path)
 
 
+##############################################################################
+# Classes for Mixin Color
+##############################################################################
 class SelectBtn_RFk(SelectButton):
     color = QtGui.QColor(0, 0, 192, 255)
 
@@ -257,36 +517,117 @@ class SelectBtn_green(SelectButton):
 class SelectBtn_darkGreen(SelectButton):
     color = QtGui.QColor(0, 100, 0, 255)
 
+
+##############################################################################
+# Classes for Mixin Drawing Shape
+##############################################################################
 class SelectBtn_Box(SelectButton):
+
     def drawShape(self, painter):
         borderWidth = 1
-        t = borderWidth / 2.0
-        l = borderWidth / 2.0
+        x = borderWidth / 2.0
+        y = borderWidth / 2.0
         w = self.width() - borderWidth
         h = self.height() - borderWidth
 
+        # round radius
         if self.height() < self.width():
-            roundRadius = self.height() * 0.25
+            rr = self.height() * 0.20
         else:
-            roundRadius = self.width() * 0.25
+            rr = self.width() * 0.20
 
         path = QtGui.QPainterPath()
-        path.addRoundedRect(QtCore.QRectF(t, l, w, h), roundRadius, roundRadius)
+        path.addRoundedRect(QtCore.QRectF(x, y, w, h), rr, rr)
         self.drawPathWithBorder(painter, path, borderWidth)
+
+
+class SelectBtn_OutlineBox(SelectButton):
+
+    def drawShape(self, painter):
+        borderWidth = 1
+        x = borderWidth / 2.0
+        y = borderWidth / 2.0
+        w = self.width() - borderWidth
+        h = self.height() - borderWidth
+
+        # round radius and outline width
+        if self.height() < self.width():
+            rr = self.height() * 0.20
+            ow = self.height() * 0.33
+        else:
+            rr = self.width() * 0.20
+            ow = self.width() * 0.33
+
+        pathOuter = QtGui.QPainterPath()
+        pathOuter.addRoundedRect(QtCore.QRectF(x, y, w, h), rr, rr)
+
+        innX = x + ow
+        innY = y + ow
+        innW = w - (ow * 2)
+        innH = h - (ow * 2)
+        innR = rr * 0.2
+        pathInner = QtGui.QPainterPath()
+        pathInner.addRoundedRect(QtCore.QRectF(innX, innY, innW, innH), innR, innR)
+
+        self.drawPathWithBorder(painter,  pathOuter - pathInner, borderWidth)
+
 
 class SelectBtn_Circle(SelectButton):
+
     def drawShape(self, painter):
         borderWidth = 1
-        t = borderWidth / 2.0
-        l = borderWidth / 2.0
+        x = borderWidth / 2.0
+        y = borderWidth / 2.0
         w = self.width() - borderWidth
         h = self.height() - borderWidth
 
         path = QtGui.QPainterPath()
-        path.addEllipse(QtCore.QRectF(t, l, w, h))
+        path.addEllipse(QtCore.QRectF(x, y, w, h))
         self.drawPathWithBorder(painter, path, borderWidth)
 
+
+class SelectBtn_OutlineCircle(SelectButton):
+
+    def drawShape(self, painter):
+        borderWidth = 1
+        x = borderWidth / 2.0
+        y = borderWidth / 2.0
+        w = self.width() - borderWidth
+        h = self.height() - borderWidth
+
+        path = QtGui.QPainterPath()
+        path.addEllipse(QtCore.QRectF(x, y, w, h))
+
+        if self.height() < self.width():
+            ow = self.height() * 0.25
+        else:
+            ow = self.width() * 0.25
+
+        innX = x + ow
+        innY = y + ow
+        innW = w - (ow * 2)
+        innH = h - (ow * 2)
+        pathInner = QtGui.QPainterPath()
+        pathInner.addEllipse(QtCore.QRectF(innX, innY, innW, innH))
+        self.drawPathWithBorder(painter, path - pathInner, borderWidth)
+
+
 class SelectBtn_TriangleLeft(SelectButton):
+
+    def drawShape(self, painter):
+        borderWidth = 1
+        w = self.width() - borderWidth
+        h = self.height() - borderWidth
+
+        triangle = QtGui.QPolygon([QtCore.QPoint(1, h/2), QtCore.QPoint( w-1, 0), QtCore.QPoint( w-1,h-1)])
+        path = QtGui.QPainterPath()
+        path.addPolygon(triangle)
+        self.drawPathWithBorder(painter, path, borderWidth)
+        painter.setClipRegion(triangle, QtCore.Qt.ReplaceClip)
+
+
+class SelectBtn_OutlineTriangleLeft(SelectButton):
+
     def drawShape(self, painter):
         borderWidth = 1
         w = self.width() - borderWidth
@@ -299,6 +640,7 @@ class SelectBtn_TriangleLeft(SelectButton):
         painter.setClipRegion(triangle, QtCore.Qt.ReplaceClip)
 
 class SelectBtn_TriangleRight(SelectButton):
+
     def drawShape(self, painter):
         borderWidth = 1
         w = self.width() - borderWidth
@@ -310,48 +652,84 @@ class SelectBtn_TriangleRight(SelectButton):
         self.drawPathWithBorder(painter, path, borderWidth)
         painter.setClipRegion(triangle, QtCore.Qt.ReplaceClip)
 
+
+class SelectBtn_OutlineTriangleRight(SelectButton):
+
+    def drawShape(self, painter):
+        borderWidth = 1
+        w = self.width() - borderWidth
+        h = self.height() - borderWidth
+
+        triangle = QtGui.QPolygon([ QtCore.QPoint(-1, 0), QtCore.QPoint( -1, h-1), QtCore.QPoint(w-1, h/2)])
+        path = QtGui.QPainterPath()
+        path.addPolygon(triangle)
+        self.drawPathWithBorder(painter, path, borderWidth)
+        painter.setClipRegion(triangle, QtCore.Qt.ReplaceClip)
+
+
 # ------------------------------------------
-class SelectBtn_RFkBox(SelectBtn_RFk, SelectBtn_Box):
-    pass
-class SelectBtn_RIkBox(SelectBtn_RIk, SelectBtn_Box):
-    pass
-class SelectBtn_CFkBox(SelectBtn_CFk, SelectBtn_Box):
-    pass
-class SelectBtn_CIkBox(SelectBtn_CIk, SelectBtn_Box):
-    pass
-class SelectBtn_LFkBox(SelectBtn_LFk, SelectBtn_Box):
-    pass
-class SelectBtn_LIkBox(SelectBtn_LIk, SelectBtn_Box):
-    pass
-class SelectBtn_yellowBox(SelectBtn_yellow, SelectBtn_Box):
-    pass
-class SelectBtn_greenBox(SelectBtn_green, SelectBtn_Box):
-    pass
-class SelectBtn_darkGreenBox(SelectBtn_darkGreen, SelectBtn_Box):
-    pass
+def _boilSelector(selectorName, color, shape):
+    class SelectorClass(color, shape):
+        pass
 
-class SelectBtn_RFkCircle(SelectBtn_RFk, SelectBtn_Circle):
-    pass
-class SelectBtn_RIkCircle(SelectBtn_RIk, SelectBtn_Circle):
-    pass
-class SelectBtn_CFkCircle(SelectBtn_CFk, SelectBtn_Circle):
-    pass
-class SelectBtn_CIkCircle(SelectBtn_CIk, SelectBtn_Circle):
-    pass
-class SelectBtn_LFkCircle(SelectBtn_LFk, SelectBtn_Circle):
-    pass
-class SelectBtn_LIkCircle(SelectBtn_LIk, SelectBtn_Circle):
-    pass
-class SelectBtn_greenCircle(SelectBtn_green, SelectBtn_Circle):
-    pass
-class SelectBtn_redCircle(SelectBtn_LFk, SelectBtn_Circle):
-    pass
-class SelectBtn_yellowCircle(SelectBtn_yellow, SelectBtn_Circle):
-    pass
-class SelectBtn_blueCircle(SelectBtn_RFk, SelectBtn_Circle):
-    pass
+    SelectorClass.__name__ = selectorName
+    return SelectorClass
 
-class SelectBtn_greenTriangleRight(SelectBtn_green, SelectBtn_TriangleRight):
-    pass
-class SelectBtn_greenTriangleLeft(SelectBtn_green, SelectBtn_TriangleLeft):
-    pass
+
+SELECTORS = {
+    # "selector button name":       [ColorClass,          DrawingClass],
+    "SelectBtn_RFkBox":              [SelectBtn_RFk,       SelectBtn_Box],
+    "SelectBtn_RIkBox":              [SelectBtn_RIk,       SelectBtn_Box],
+    "SelectBtn_CFkBox":              [SelectBtn_CFk,       SelectBtn_Box],
+    "SelectBtn_CIkBox":              [SelectBtn_CIk,       SelectBtn_Box],
+    "SelectBtn_LFkBox":              [SelectBtn_LFk,       SelectBtn_Box],
+    "SelectBtn_LIkBox":              [SelectBtn_LIk,       SelectBtn_Box],
+    "SelectBtn_yellowBox":           [SelectBtn_yellow,    SelectBtn_Box],
+    "SelectBtn_greenBox":            [SelectBtn_green,     SelectBtn_Box],
+    "SelectBtn_darkGreenBox":        [SelectBtn_darkGreen, SelectBtn_Box],
+
+    "SelectBtn_RFkCircle":           [SelectBtn_RFk,       SelectBtn_Circle],
+    "SelectBtn_RIkCircle":           [SelectBtn_RIk,       SelectBtn_Circle],
+    "SelectBtn_CFkCircle":           [SelectBtn_CFk,       SelectBtn_Circle],
+    "SelectBtn_CIkCircle":           [SelectBtn_CIk,       SelectBtn_Circle],
+    "SelectBtn_LFkCircle":           [SelectBtn_LFk,       SelectBtn_Circle],
+    "SelectBtn_LIkCircle":           [SelectBtn_LIk,       SelectBtn_Circle],
+    "SelectBtn_greenCircle":         [SelectBtn_green,     SelectBtn_Circle],
+    "SelectBtn_redCircle":           [SelectBtn_LFk,       SelectBtn_Circle],
+    "SelectBtn_yellowCircle":        [SelectBtn_yellow,    SelectBtn_Circle],
+    "SelectBtn_blueCircle":          [SelectBtn_RFk,       SelectBtn_Circle],
+
+    "SelectBtn_RFkOutlineBox":       [SelectBtn_RFk,       SelectBtn_OutlineBox],
+    "SelectBtn_RIkOutlineBox":       [SelectBtn_RIk,       SelectBtn_OutlineBox],
+    "SelectBtn_CFkOutlineBox":       [SelectBtn_CFk,       SelectBtn_OutlineBox],
+    "SelectBtn_CIkOutlineBox":       [SelectBtn_CIk,       SelectBtn_OutlineBox],
+    "SelectBtn_LFkOutlineBox":       [SelectBtn_LFk,       SelectBtn_OutlineBox],
+    "SelectBtn_LIkOutlineBox":       [SelectBtn_LIk,       SelectBtn_OutlineBox],
+    "SelectBtn_yellowOutlineBox":    [SelectBtn_yellow,    SelectBtn_OutlineBox],
+    "SelectBtn_greenOutlineBox":     [SelectBtn_green,     SelectBtn_OutlineBox],
+    "SelectBtn_darkGreenOutlineBox": [SelectBtn_darkGreen, SelectBtn_OutlineBox],
+
+    "SelectBtn_RFkOutlineCircle":    [SelectBtn_RFk,       SelectBtn_OutlineCircle],
+    "SelectBtn_RIkOutlineCircle":    [SelectBtn_RIk,       SelectBtn_OutlineCircle],
+    "SelectBtn_CFkOutlineCircle":    [SelectBtn_CFk,       SelectBtn_OutlineCircle],
+    "SelectBtn_CIkOutlineCircle":    [SelectBtn_CIk,       SelectBtn_OutlineCircle],
+    "SelectBtn_LFkOutlineCircle":    [SelectBtn_LFk,       SelectBtn_OutlineCircle],
+    "SelectBtn_LIkOutlineCircle":    [SelectBtn_LIk,       SelectBtn_OutlineCircle],
+    "SelectBtn_greenOutlineCircle":  [SelectBtn_green,     SelectBtn_OutlineCircle],
+    "SelectBtn_redOutlineCircle":    [SelectBtn_LFk,       SelectBtn_OutlineCircle],
+    "SelectBtn_yellowOutlineCircle": [SelectBtn_yellow,    SelectBtn_OutlineCircle],
+    "SelectBtn_blueOutlineCircle":   [SelectBtn_RFk,       SelectBtn_OutlineCircle],
+
+    "SelectBtn_RFkTriangleRight":  [SelectBtn_RFk,         SelectBtn_TriangleRight],
+    "SelectBtn_RIkTriangleRight":  [SelectBtn_RIk,         SelectBtn_TriangleRight],
+    "SelectBtn_LFkTriangleLeft":   [SelectBtn_LFk,         SelectBtn_TriangleLeft],
+    "SelectBtn_LIkTriangleLeft":   [SelectBtn_LIk,         SelectBtn_TriangleLeft],
+
+    "SelectBtn_greenTriangleRight":  [SelectBtn_green,     SelectBtn_TriangleRight],
+    "SelectBtn_greenTriangleLeft":   [SelectBtn_green,     SelectBtn_TriangleLeft]
+}
+
+
+for name, mixins in SELECTORS.items():
+    klass = _boilSelector(name, mixins[0], mixins[1])
+    globals()[klass.__name__] = klass

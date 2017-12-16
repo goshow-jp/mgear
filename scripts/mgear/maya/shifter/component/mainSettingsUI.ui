@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>269</width>
-    <height>293</height>
+    <height>315</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,7 +17,7 @@
    <property name="geometry">
     <rect>
      <x>11</x>
-     <y>136</y>
+     <y>156</y>
      <width>249</width>
      <height>81</height>
     </rect>
@@ -31,7 +31,7 @@
    <property name="title">
     <string>Joint Connexion Settings</string>
    </property>
-   <widget class="QWidget" name="">
+   <widget class="QWidget" name="layoutWidget">
     <property name="geometry">
      <rect>
       <x>10</x>
@@ -85,7 +85,7 @@
    <property name="geometry">
     <rect>
      <x>11</x>
-     <y>220</y>
+     <y>240</y>
      <width>249</width>
      <height>61</height>
     </rect>
@@ -99,7 +99,7 @@
    <property name="title">
     <string>Channels Host Settings</string>
    </property>
-   <widget class="QWidget" name="">
+   <widget class="QWidget" name="layoutWidget">
     <property name="geometry">
      <rect>
       <x>10</x>
@@ -135,22 +135,25 @@
      <x>11</x>
      <y>11</y>
      <width>249</width>
-     <height>119</height>
+     <height>139</height>
     </rect>
    </property>
    <property name="title">
     <string/>
    </property>
-   <widget class="QWidget" name="">
+   <widget class="QWidget" name="layoutWidget">
     <property name="geometry">
      <rect>
       <x>10</x>
       <y>10</y>
       <width>231</width>
-      <height>100</height>
+      <height>126</height>
      </rect>
     </property>
     <layout class="QFormLayout" name="formLayout">
+     <property name="fieldGrowthPolicy">
+      <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+     </property>
      <item row="0" column="0">
       <widget class="QLabel" name="name_label">
        <property name="text">
@@ -232,27 +235,23 @@
        </item>
       </widget>
      </item>
+     <item row="4" column="0">
+      <widget class="QLabel" name="size_label">
+       <property name="text">
+        <string>Size</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="1">
+      <widget class="QSpinBox" name="size_spinBox">
+       <property name="maximum">
+        <number>9999</number>
+       </property>
+      </widget>
+     </item>
     </layout>
    </widget>
   </widget>
-  <zorder>name_label</zorder>
-  <zorder>name_lineEdit</zorder>
-  <zorder>side_label</zorder>
-  <zorder>side_comboBox</zorder>
-  <zorder>componentIndex_label</zorder>
-  <zorder>componentIndex_spinBox</zorder>
-  <zorder>conector_label</zorder>
-  <zorder>connector_comboBox</zorder>
-  <zorder>useJointIndex_checkBox</zorder>
-  <zorder>parentJointIndex_label</zorder>
-  <zorder>parentJointIndex_spinBox</zorder>
-  <zorder>jointConnexionSettings_groupBox</zorder>
-  <zorder>host_label</zorder>
-  <zorder>host_lineEdit</zorder>
-  <zorder>host_pushButton</zorder>
-  <zorder>host_pushButton</zorder>
-  <zorder>groupBox</zorder>
-  <zorder>mainSettings_groupBox</zorder>
  </widget>
  <resources/>
  <connections/>

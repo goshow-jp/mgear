@@ -182,6 +182,7 @@ class ComponentGuide(MainGuide):
         self.pCompIndex = self.addParam("comp_index",  "long", self.compIndex, 0)
         self.pConnector = self.addParam("connector",  "string", "standard")
         self.pUIHost = self.addParam("ui_host",  "string", "")
+        self.pSize = self.addParam("size",  "long", 1.0)
 
         # Items -------------------------------------------
         typeItems = [self.compType, self.compType]
@@ -303,11 +304,7 @@ class ComponentGuide(MainGuide):
         self.addObjects()
         pm.select(self.root)
 
-
-
-        #TODO: add function to scale the points of the icons
-        # Set the size of the root
-        # self.root.size = self.root_size
+        self.root.size = self.pSize
 
 
     def drawFromUI(self, parent):
@@ -447,7 +444,7 @@ class ComponentGuide(MainGuide):
 
         return True
 
-    def rename(self, root, newName, newSide, newIndex):
+    def rename(self, root, newName, newSide=None, newIndex=None):
         """
         Rename the component.
 
@@ -464,6 +461,12 @@ class ComponentGuide(MainGuide):
         oldSide = self.parent.attr("comp_side").get()
         oldName = self.parent.attr("comp_name").get()
         oldSideIndex = oldSide + str(oldIndex)
+
+        if not newSide:
+            newSide = oldSide
+
+        if not newIndex:
+            newIndex = oldIndex
 
         # change attr side in root
         self.parent.attr("comp_name").set(newName)
@@ -681,7 +684,7 @@ class ComponentGuide(MainGuide):
         Returns:
             float: the size
         """
-        size = .01
+        size = .1
         for pos in self.apos:
             d = vec.getDistance(self.pos["root"], pos)
             size = max(size, d)
@@ -835,6 +838,7 @@ class componentMainSettings(QtWidgets.QDialog, helperSlots):
         self.mainSettingsTab.parentJointIndex_spinBox.setValue(self.root.attr("parentJointIndex").get())
         self.mainSettingsTab.host_lineEdit.setText(self.root.attr("ui_host").get())
 
+        self.mainSettingsTab.size_spinBox.setValue(self.root.attr("size").get())
 
 
 
@@ -860,4 +864,4 @@ class componentMainSettings(QtWidgets.QDialog, helperSlots):
         self.mainSettingsTab.parentJointIndex_spinBox.valueChanged.connect(partial(self.updateSpinBox, self.mainSettingsTab.parentJointIndex_spinBox, "parentJointIndex"))
         self.mainSettingsTab.host_pushButton.clicked.connect(partial(self.updateHostUI, self.mainSettingsTab.host_lineEdit, "ui_host"))
 
-
+        self.mainSettingsTab.size_spinBox.valueChanged.connect(partial(self.updateSpinBox, self.mainSettingsTab.size_spinBox, "size"))
