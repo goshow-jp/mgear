@@ -35,11 +35,12 @@ def importTab(tabName):
 
     Returns:
         module: Synoptic tab module
+
     """
     import mgear.maya.synoptic as syn
     dirs = syn.SYNOPTIC_DIRECTORIES
     defFmt = "mgear.maya.synoptic.tabs.{}"
-    customFmt = "{0}"
+    customFmt = "{}"
 
     module = mgear.maya.utils.importFromStandardOrCustomDirectories(
         dirs, defFmt, customFmt, tabName)
@@ -55,10 +56,7 @@ class Synoptic(MayaQWidgetDockableMixin, QtWidgets.QDialog):
     default_height = 790
     default_width = 325
     margin = 15 * 2
-
-    default_height = 790
-    default_width = 325
-    margin = 15 * 2
+    tabWidgets = dict()
 
     def __init__(self, parent=None):
         self.toolName = SYNOPTIC_WIDGET_NAME
@@ -195,26 +193,29 @@ class Synoptic(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                       if item.hasAttr("is_rig")]
 
         self.model_list.clear()
-        for item in rig_models:
+        for i, item in enumerate(rig_models):
             self.model_list.addItem(item.name(), item.name())
+            self.model_list.setCurrentIndex(i)
+            self.updateTabs()
+
+        self.model_list.setCurrentIndex(0)
+        self.updateTabs()
 
         # restore event and update tabs for reflecting self.model_list
         self.model_list.currentIndexChanged.connect(self.updateTabs)
-        self.updateTabs()
 
-    def updateTabs(self):
-
-        for i in range(self.tabs.count()):
-            self.tabs.widget(i).close()
-        self.tabs.clear()
-
-        # safety clean of  synoticTab script jobs
+    def updateCallBack(self):
+        # safety clean of synoticTab script jobs
         # this is neded when we switch models witout close synopticwindow.
         oldJobs = pm.scriptJob(listJobs=True)
         for oldjob in oldJobs:
             if "SynopticTab" in str(oldjob):
                 id = oldjob.split(" ")[0][:-1]
                 pm.scriptJob(kill=int(id), force=True)
+
+    def updateTabs(self):
+
+        self.tabs.clear()
 
         currentModelName = self.model_list.currentText()
         currentModels = pm.ls(currentModelName)
@@ -223,30 +224,16 @@ class Synoptic(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
         tab_names = currentModels[0].getAttr("synoptic").split(",")
 
-        max_h = 0
-        max_w = 0
-        for i, tab_name in enumerate(tab_names):
+        max_h = None
+        max_w = None
+        for i, tabName in enumerate(tab_names):
             try:
-                if tab_name:
-                    # instantiate SynopticTab widget
-                    module = importTab(tab_name)
-                    synoptic_tab = getattr(module, "SynopticTab")()
-
-                    # set minimum size for auto fit (stretch) scroll area
-                    if synoptic_tab.minimumHeight() == 0:
-                        synoptic_tab.setMinimumHeight(synoptic_tab.height())
-                    if synoptic_tab.minimumWidth() == 0:
-                        synoptic_tab.setMinimumWidth(synoptic_tab.width())
-
-                    # store tab size for set container size later
-                    h = synoptic_tab.minimumHeight()
-                    w = synoptic_tab.minimumWidth()
-
+                if tabName:
+                    tab, h, w = self.instantiateTab(tabName, currentModels[0])
                     max_h = h if max_h < h else max_h
                     max_w = w if max_w < w else max_w
 
-                    tab = self.wrapTabContents(synoptic_tab)
-                    self.tabs.insertTab(i, tab, tab_name)
+                    self.tabs.insertTab(i, tab, tabName)
 
                 else:
                     mes = "No synoptic tabs for %s" % \
@@ -259,14 +246,50 @@ class Synoptic(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                 traceback.print_exc()
 
                 mes = "Synoptic tab: %s Loading fail {0}\n{1}".format(
-                    tab_name, e)
+                    tabName, e)
 
                 pm.displayError(mes)
 
-        max_h = self.default_height if max_h == 0 else max_h
-        max_w = self.default_width if max_w == 0 else max_w
+        max_h = max_h or self.default_height
+        max_w = max_w or self.default_width
         header_space = 45
         self.resize(max_w + self.margin, max_h + self.margin + header_space)
+
+    def instantiateTab(self, tabName, model):
+        # instantiate SynopticTab widget
+
+        keyName = "{}_{}".format(tabName, model)
+        entry = self.tabWidgets.get(keyName)
+
+        try:
+            if (
+                (entry is not None) and
+                (not any([not x for x in entry.get("widget").children()]))
+            ):
+
+                return entry.get("widget"), entry.get("h"), entry.get("w")
+
+        except (KeyError, RuntimeError):
+            print("error access widget:" + tabName)
+            pass
+
+        module = importTab(tabName)
+        synoptic_tab = getattr(module, "SynopticTab")(self)
+
+        # set minimum size for auto fit (stretch) scroll area
+        if synoptic_tab.minimumHeight() == 0:
+            synoptic_tab.setMinimumHeight(synoptic_tab.height())
+        if synoptic_tab.minimumWidth() == 0:
+            synoptic_tab.setMinimumWidth(synoptic_tab.width())
+
+        # store tab size for set container size later
+        h = synoptic_tab.minimumHeight()
+        w = synoptic_tab.minimumWidth()
+
+        tab = self.wrapTabContents(synoptic_tab)
+        self.tabWidgets[keyName] = {"widget": tab, "h": h, "w": w}
+
+        return tab, h, w
 
     def wrapTabContents(self, synoptic_tab):
         # type: (SynopticTab) -> QtWidgets.QWidget
@@ -313,7 +336,6 @@ class SynopticTabWrapper(QtWidgets.QWidget):
     """
 
     def __init__(self, *args, **kwargs):
-        # type: () -> None
 
         super(SynopticTabWrapper, self).__init__(*args, **kwargs)
 
@@ -323,8 +345,8 @@ class SynopticTabWrapper(QtWidgets.QWidget):
             QtWidgets.QRubberBand.Rectangle, self)
 
         self.offset = QtCore.QPoint()
-        self.syn_widget = None
-        self.syn_widget_is_mainsynoptictab = None
+        self.synWidget = None
+        self.isMainSynopticTab = None
 
     def setSpacerLeft(self, spacer):
         # type: (QtWidgets.QSpacerItem) -> None
@@ -378,38 +400,38 @@ class SynopticTabWrapper(QtWidgets.QWidget):
     def mousePressEvent(self, event):
         # type: (QtGui.QMouseEvent) -> None
 
-        self.syn_widget, self.syn_widget_is_mainsynoptictab = self.searchMainSynopticTab()
+        self.synWidget, self.isMainSynopticTab = self.searchMainSynopticTab()
         self.offset = self.calculateOffset()
         self.origin = event.pos()
 
         self.rubberband.setGeometry(QtCore.QRect(self.origin, QtCore.QSize()))
         self.rubberband.show()
 
-        if self.syn_widget_is_mainsynoptictab:
-            self.syn_widget.mousePressEvent_(self.offsetEvent(event))
+        if self.isMainSynopticTab:
+            self.synWidget.mousePressEvent_(self.offsetEvent(event))
         else:
-            self.syn_widget.mousePressEvent(self.offsetEvent(event))
+            self.synWidget.mousePressEvent(self.offsetEvent(event))
 
     def mouseMoveEvent(self, event):
         # type: (QtGui.QMouseEvent) -> None
-        self.syn_widget, self.syn_widget_is_mainsynoptictab = self.searchMainSynopticTab()
+        self.synWidget, self.isMainSynopticTab = self.searchMainSynopticTab()
 
         if self.rubberband.isVisible():
             self.rubberband.setGeometry(QtCore.QRect(self.origin, event.pos()).normalized())
 
-        if self.syn_widget_is_mainsynoptictab:
-            self.syn_widget.mouseMoveEvent_(self.offsetEvent(event))
+        if self.isMainSynopticTab:
+            self.synWidget.mouseMoveEvent_(self.offsetEvent(event))
         else:
-            self.syn_widget.mouseMoveEvent(self.offsetEvent(event))
+            self.synWidget.mouseMoveEvent(self.offsetEvent(event))
 
     def mouseReleaseEvent(self, event):
         # type: (QtGui.QMouseEvent) -> None
-        self.syn_widget, self.syn_widget_is_mainsynoptictab = self.searchMainSynopticTab()
+        self.synWidget, self.isMainSynopticTab = self.searchMainSynopticTab()
 
         if self.rubberband.isVisible():
             self.rubberband.hide()
 
-            if self.syn_widget_is_mainsynoptictab:
-                self.syn_widget.mouseReleaseEvent_(self.offsetEvent(event))
+            if self.isMainSynopticTab:
+                self.synWidget.mouseReleaseEvent_(self.offsetEvent(event))
             else:
-                self.syn_widget.mouseReleaseEvent(self.offsetEvent(event))
+                self.synWidget.mouseReleaseEvent(self.offsetEvent(event))
