@@ -6,17 +6,17 @@ import sys
 from functools import wraps
 
 from maya import cmds
-import pymel.core as pm
 from maya import mel
 
+import pymel.core as pm
+
 import mgear
 
-import pymel.core as pm
-import mgear
 
 ##########################################################
 # UTILS
 ##########################################################
+
 
 def is_odd(num):
     """Check if the number is odd.
@@ -26,6 +26,7 @@ def is_odd(num):
 
     Returns:
         bool: True or False
+
     """
     return num % 2
 
@@ -33,7 +34,7 @@ def is_odd(num):
 def gatherCustomModuleDirectories(envvarkey,
                                   defaultModulePath,
                                   component=False):
-    """returns component directory
+    """Returns component directory
 
     Arguments:
         envvarkey: The environment variable key name, that is searched
@@ -87,7 +88,7 @@ def gatherCustomModuleDirectories(envvarkey,
 
 
 def getModuleBasePath(directories, moduleName):
-    """search component path"""
+    """Search component path"""
 
     for basepath, modules in directories.iteritems():
         if moduleName in modules:
@@ -129,8 +130,12 @@ def importFromStandardOrCustomDirectories(directories,
 
     except ImportError:
         moduleBasePath = getModuleBasePath(directories, moduleName)
-        module_name = customFormatter.format(moduleName)
-        sys.path.append(pm.dirmap(cd=moduleBasePath))
+        try:
+            module_name = customFormatter.format(moduleName)
+            sys.path.append(pm.dirmap(cd=moduleBasePath))
+        except IndexError:
+            module_name = customFormatter.format(os.path.basename(moduleBasePath), moduleName)
+
         module = __import__(module_name, globals(), locals(), ["*"], -1)
 
     return module

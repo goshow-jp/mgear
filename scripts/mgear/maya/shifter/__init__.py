@@ -63,8 +63,7 @@ def importComponent(comp_type):
 
 
 def importComponentSubModule(comp_type, module_name):
-    import mgear.maya.shifter as shifter
-    dirs = shifter.COMPONENTS_DIRECTORIES
+    dirs = getComponentDirectories()
     defFmt = "mgear.maya.shifter.component.{{}}.{}".format(module_name)
     customFmt = "{{0}}.{{1}}.{}".format(module_name)
 
@@ -79,7 +78,6 @@ def importComponentGuide(comp_type):
 
 def importComponentController(comp_type):
     return importComponentSubModule(comp_type, "controller")
-
 
 
 def reloadComponents(*args):

@@ -253,6 +253,7 @@ def listAttrForMirror(node):
 
 
 def getInvertCheckButtonAttrName(str):
+    # type: (Text) -> Text
     """Get the invert check butto attribute name
 
     Args:
@@ -261,7 +262,6 @@ def getInvertCheckButtonAttrName(str):
     Returns:
         str: The checked attribute name
     """
-    # type: (str) -> str
     return "inv{0}".format(str.lower().capitalize())
 
 
@@ -684,11 +684,10 @@ def mirrorPose(flip=False, nodes=None):
         for dat in mirrorEntries:
             applyMirror(nameSpace, dat)
 
-    except Exception as e:
+    except Exception:
         pm.displayWarning("Flip/Mirror pose fail")
         import traceback
         traceback.print_exc()
-        print e
 
     finally:
         pm.undoInfo(cck=1)

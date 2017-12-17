@@ -1,6 +1,70 @@
+import traceback
+from functools import wraps
 from . import utils
-
+from .. import shifter
 from mgear.vendor.Qt import QtCore, QtWidgets, QtGui
+
+
+##################################################
+# Decorator
+##################################################
+def executeInShifterController(func):
+    # type: (function) -> function
+    """
+    Decorator - Execute in specified component module's scope or
+                exceute wrapped method directory if not specified or not exists.
+    """
+
+    @wraps(func)
+    def wrap(*args, **kwargs):
+        # type: (*str, **str) -> None
+
+        self = args[0]
+        args = args[1:]
+
+        try:
+            if not hasattr(self, "shifter_controller") or self.shifter_controller is None:
+
+                self.shifter_controller = searchShifterController(self)
+
+            if self != self.shifter_controller and hasattr(self.shifter_controller, func.func_name):
+                return getattr(self.shifter_controller, func.func_name)(*args, **kwargs)
+
+            else:
+                # fallback
+                return func(self, *args, **kwargs)
+
+        except Exception:
+            traceback.print_exc()
+            raise
+
+    return wrap
+
+
+def searchShifterController(target_button):
+    # type: (QtWidgets.QObject) -> object
+    """Returns shifter component module class on behalf of target_button."""
+
+    comp_name = target_button.property("component")
+    class_name = type(target_button).__name__
+
+    if comp_name is not None:
+        controller = shifter.importComponentController(comp_name)
+
+        if controller:
+            try:
+                button = getattr(controller, class_name)
+                return button(target_button)
+
+            except AttributeError:
+                return target_button
+
+        else:
+            mgear.log("Can't find target component controller module: {0}".format(comp_name), mgear.sev_error)
+            return target_button
+
+    else:
+        return target_button
 
 
 ##################################################
@@ -62,9 +126,9 @@ class toggleCombo(QtWidgets.QComboBox):
         event.ignore()
 
     # def focusInEvent(self, event):
-    @execute_in_shifter_controller
+    @executeInShifterController
     def enterEvent(self, event, *args):
-        self.model = utis.getModel(self)
+        self.model = utils.getModel(self)
         self.uihost_name = str(self.property("Object"))
         self.combo_attr = str(self.property("Attr"))
         self.ctl_name = str(self.property("ik_ctl"))
@@ -77,11 +141,11 @@ class toggleCombo(QtWidgets.QComboBox):
             self.model, self.uihost_name, self.combo_attr))
         self.firstUpdate = True
 
-    @execute_in_shifter_controller
+    @executeInShifterController
     def handleChanged(self, *args):
         if self.firstUpdate:
             if self.currentIndex() == self.count() - 1:
-                print "Space Transfer"
+                print("Space Transfer")
                 self.setCurrentIndex(utils.getComboIndex(
                     self.model, self.uihost_name, self.combo_attr))
                 utils.ParentSpaceTransfer.showUI(self,
@@ -125,7 +189,7 @@ class ikfkMatchAllButton(QtWidgets.QPushButton):
         self.ikfkButtons = []
         self.shifter_controller = None
 
-    @execute_in_shifter_controller
+    @executeInShifterController
     def searchButtonByName(self, name):
         # type: (str) -> list[ikfkMatchButton]
         """search and return ikfkMatchButton s that has been named 'name'."""
@@ -139,7 +203,7 @@ class ikfkMatchAllButton(QtWidgets.QPushButton):
         else:
             mgear.log("Can't find ikfkMatchButton: {0}".format(name), mgear.sev_error)
 
-    @execute_in_shifter_controller
+    @executeInShifterController
     def mousePressEvent(self, event):
         # type: (QtCore.QEvent) -> None
 
@@ -170,7 +234,7 @@ class ikfkMatchAllButton(QtWidgets.QPushButton):
                 button.mousePressEvent(event)
             return
 
-    @execute_in_shifter_controller
+    @executeInShifterController
     def determineWhichToChange(self, buttons):
         # type: (list[ikfkMatchButton]) -> str
         """determine which to change, to fk or to ik."""
@@ -205,7 +269,7 @@ class ikfkMatchButton(QtWidgets.QPushButton):
         self.ik = None
         self.upv = None
 
-    @execute_in_shifter_controller
+    @executeInShifterController
     def searchNumberOfFkControllers(self):
         # type: () -> None
 
@@ -215,7 +279,7 @@ class ikfkMatchButton(QtWidgets.QPushButton):
                 self.numFkControllers = i
                 break
 
-    @execute_in_shifter_controller
+    @executeInShifterController
     def isControllerSetup(self):
         # type: () -> bool
 
@@ -225,7 +289,7 @@ class ikfkMatchButton(QtWidgets.QPushButton):
         else:
             return True
 
-    @execute_in_shifter_controller
+    @executeInShifterController
     def lookupControllers(self):
         # type: () -> None
 
@@ -244,7 +308,7 @@ class ikfkMatchButton(QtWidgets.QPushButton):
         self.ik = str(self.property("ik"))
         self.upv = str(self.property("upv"))
 
-    @execute_in_shifter_controller
+    @executeInShifterController
     def mousePressEvent(self, event):
         # type: (QtCore.QEvent) -> None
 
@@ -287,7 +351,7 @@ class keyGroup(QtWidgets.QPushButton):
 
 class toggleAttrButton(QtWidgets.QPushButton):
 
-    @execute_in_shifter_controller
+    @executeInShifterController
     def mousePressEvent(self, event):
 
         model = utils.getModel(self)
@@ -299,14 +363,14 @@ class toggleAttrButton(QtWidgets.QPushButton):
 
 class resetTransform(QtWidgets.QPushButton):
 
-    @execute_in_shifter_controller
+    @executeInShifterController
     def mousePressEvent(self, event):
         utils.resetSelTrans()
 
 
 class resetBindPose(QtWidgets.QPushButton):
 
-    @execute_in_shifter_controller
+    @executeInShifterController
     def mousePressEvent(self, event):
 
         model = utils.getModel(self)
@@ -316,7 +380,7 @@ class resetBindPose(QtWidgets.QPushButton):
 
 class MirrorPoseButton(QtWidgets.QPushButton):
 
-    @execute_in_shifter_controller
+    @executeInShifterController
     def mousePressEvent(self, event):
 
         utils.mirrorPose()
@@ -324,7 +388,7 @@ class MirrorPoseButton(QtWidgets.QPushButton):
 
 class FlipPoseButton(QtWidgets.QPushButton):
 
-    @execute_in_shifter_controller
+    @executeInShifterController
     def mousePressEvent(self, event):
 
         utils.mirrorPose(True)
@@ -332,7 +396,7 @@ class FlipPoseButton(QtWidgets.QPushButton):
 
 class QuickSelButton(QtWidgets.QPushButton):
 
-    @execute_in_shifter_controller
+    @executeInShifterController
     def mousePressEvent(self, event):
 
         model = utils.getModel(self)
@@ -371,7 +435,7 @@ class SelectButton(QtWidgets.QWidget):
         self.update()
         QtWidgets.QWidget.leaveEvent(self, event)
 
-    @execute_in_shifter_controller
+    @executeInShifterController
     def rectangleSelection(self, event, firstLoop):
         if firstLoop:
             key_modifier = event.modifiers()
@@ -387,7 +451,7 @@ class SelectButton(QtWidgets.QWidget):
         mouse_button = event.button()
         utils.selectObj(model, object, mouse_button, key_modifier)
 
-    @execute_in_shifter_controller
+    @executeInShifterController
     def mousePressEvent(self, event):
 
         model = utils.getModel(self)
