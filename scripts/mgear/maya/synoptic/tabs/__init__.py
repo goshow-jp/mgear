@@ -2,9 +2,11 @@ import traceback
 
 import pymel.core as pm
 import maya.OpenMayaUI as OpenMayaUI
+import maya.OpenMaya as OpenMaya
 
 import mgear
 from .. import widgets, utils
+from ... import callback
 from mgear.vendor.Qt import QtCore, QtWidgets, QtGui, QtCompat
 
 ##################################################
@@ -45,6 +47,7 @@ class MainSynopticTab(QtWidgets.QDialog):
         klass.connectSignals()
         klass.connectMaya()
         self._buttonGeometry = {}  # for cachinig
+        klass.model = utils.getModel(klass)
 
         # This is necessary for not to be zombie job on close.
         # Qt does not actually destroy the object by just pressing
@@ -85,27 +88,21 @@ class MainSynopticTab(QtWidgets.QDialog):
         # script job callback
         # ptr = long(QtCompat.getCppPointer(self)[0])
         # ptr = long(QtCompat.getCppPointer(self))
-        ptr = QtCompat.getCppPointer(self)
+        # ptr = QtCompat.getCppPointer(self)
+        # gui = OpenMayaUI.MQtUtil.fullName(ptr)
 
-        gui = OpenMayaUI.MQtUtil.fullName(ptr)
-        self.selJob = pm.scriptJob(e=("SelectionChanged",
-                                      self.selectChanged),
-                                   parent=gui)
+        addFunc = OpenMaya.MEventMessage.addEventCallback
+        eventName = "SelectionChanged"
+        id = callback.add(addFunc, eventName, self.selectChanged)
+        self.selJob = callback.MCallbackIdWrapper(id)
 
     def selectChanged(self, *args):
         # wrap to catch exception guaranteeing maya does not stop at this
         try:
             self.__selectChanged(*args)
 
-        except Exception as e:
-            mes = traceback.format_exc()
-            mes = "error has occur in scriptJob " \
-                  "SelectionChanged\n{0}".format(mes)
-
-            mes = "{0}\n{1}".format(mes, e)
-            mgear.log(mes, mgear.sev_error)
-            pm.scriptJob(kill=self.selJob)
-            self.close()
+        except Exception:
+            del self.selJob
 
     def __selectChanged(self, *args):
 
@@ -113,11 +110,12 @@ class MainSynopticTab(QtWidgets.QDialog):
         [sels.append(x.name()) for x in pm.ls(sl=True)]
 
         oModel = utils.getModel(self)
+        oModel = self.model
         if not oModel:
             mes = "model not found for synoptic {}".format(self.name)
             mgear.log(mes, mgear.sev_info)
 
-            # self.close()
+            self.close()
 
             syn_widget = utils.getSynopticWidget(self)
             syn_widget.updateModelList()
@@ -199,19 +197,21 @@ class MainSynopticTab(QtWidgets.QDialog):
     def selAll_clicked(self):
         # type: () -> None
         model = utils.getModel(self)
+        model = self.model
         utils.selAll(model)
 
     def resetAll_clicked(self):
         # type: () -> None
-        print "resetAll"
+        print("resetAll")
 
     def resetSel_clicked(self):
         # type: () -> None
-        print "resetSel"
+        print("resetSel")
 
     def keyAll_clicked(self):
         # type: () -> None
         model = utils.getModel(self)
+        model = self.model
         utils.keyAll(model)
 
     def keySel_clicked(self):
